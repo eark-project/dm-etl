@@ -1,0 +1,80 @@
+{
+  namespaces: {
+    "at.ac.ait": "p"
+  },
+  fieldTypes: [
+    {
+      name: "p$url",
+      valueType: "STRING",
+      scope: "non_versioned"
+    },
+    {
+      name: "p$date",
+      valueType: "DATETIME",
+      scope: "non_versioned"
+    },
+    {
+      name: "p$contentType",
+      valueType: "STRING",
+      scope: "non_versioned"
+    },
+    {
+      name: "p$size",
+      valueType: "INTEGER",
+      scope: "non_versioned"
+    },
+    {
+      name: "p$category",
+      valueType: "STRING",
+      scope: "non_versioned"
+    },
+    {
+      name: "p$headline",
+      valueType: "STRING",
+      scope: "non_versioned"
+    },
+    {
+      name: "p$author",
+      valueType: "STRING",
+      scope: "non_versioned"
+    },
+    {
+      name: "p$datePublished",
+      valueType: "DATETIME",
+      scope: "non_versioned"
+    },
+    {
+      name: "p$articleBody",
+      valueType: "STRING",
+      scope: "non_versioned"
+    },
+    {
+      name: "p$postings",
+      valueType: "INTEGER",
+      scope: "non_versioned"
+    },
+    {
+      name: "p$body",
+      valueType: "BLOB",
+      scope: "non_versioned"
+    }
+  ],
+  recordTypes: [
+    {
+      name: "p$Website",
+      fields: [
+        {name: "p$url", mandatory: true},
+        {name: "p$date", mandatory: true},
+        {name: "p$contentType", mandatory: false},
+        {name: "p$size", mandatory: true},
+        {name: "p$category", mandatory: false},
+        {name: "p$headline", mandatory: false},
+        {name: "p$author", mandatory: false},
+        {name: "p$datePublished", mandatory: false},
+        {name: "p$articleBody", mandatory: false},
+        {name: "p$postings", mandatory: false},
+        {name: "p$body", mandatory: false}
+      ]
+    }
+  ]
+}

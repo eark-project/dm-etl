@@ -1,0 +1,59 @@
+# copy solr schema and config
+CONFIG=~/workspace2/dm-etl/src/main/config
+cd ~/solr-4.8.1/example
+cp $CONFIG/schema.xml solr/collection1/conf
+cp $CONFIG/solrconfig.xml solr/collection1/conf
+
+# starting solr
+java -jar start.jar
+
+# starting solr with carrot2 clustering
+java -Dsolr.clustering.enabled=true -jar start.jar
+
+# starting lily
+cd ~/lily-2.4
+service/lily-service start
+
+# lily preparation
+# ----------------
+CONFIG=~/workspace2/dm-etl/src/main/config
+cd ~/lily-2.4/bin
+
+# importing lily shema
+./lily-import -s $CONFIG/schema.json
+
+# add indexer configuration
+./lily-add-index --name web \
+               --indexer-config $CONFIG/indexerconf.xml \
+               --solr-mode classic \
+               --solr-shards shard1:http://localhost:8983/solr
+
+# job execution
+# -------------
+cd ~/workspace2/dm-etl
+
+# build jar
+mvn install
+
+cd target
+
+# start map-reduce job
+hadoop jar dm-etl-1.0-SNAPSHOT-mapreduce-job.jar -z localhost
+
+# list indexes
+~/lily-2.4/bin/lily-list-indexes
+
+# batch index building
+~/lily-2.4/bin/lily-update-index -n web --build-state BUILD_REQUESTED
+
+# remove indexer configuration
+~/lily-2.4/bin/lily-update-index -n web --state DELETE_REQUESTED
+
+# retrieve record
+curl http://localhost:12060/repository/record/UUID.28da4e87-fc76-423a-a23f-44ee7c9a35ca | json_reformat
+
+# delete record
+curl -X  DELETE http://localhost:12060/repository/record/UUID.ef05374e-7961-41c4-a10e-2224c30071d0
+
+# clear solr index
+curl http://localhost:8983/solr/update/?commit=true -d "<delete><query>*:*</query></delete>" -H "Content-Type: text/xml"

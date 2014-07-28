@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+
+<indexer xmlns:b="at.ac.ait">
+  <recordFilter>
+    <includes>
+      <include recordType="b:Website" vtags="last"/>
+    </includes>
+  </recordFilter>
+
+  <fields>
+    <field name="url" value="b:url"/>
+    <field name="date" value="b:date"/>
+    <field name="contentType" value="b:contentType"/>
+    <field name="size" value="b:size"/>
+    <field name="category" value="b:category"/>
+    <field name="headline" value="b:headline"/>
+    <field name="author" value="b:author"/>
+    <field name="datePublished" value="b:datePublished"/>
+    <field name="articleBody" value="b:articleBody"/>
+    <field name="postings" value="b:postings"/>
+    <field name="body" value="b:body" extractContent="true"/>
+  </fields>
+
+</indexer>
