@@ -15,19 +15,24 @@ public class SiteElement {
 	}
 
 	public String text() {
-		if (elements.isEmpty()) return null;
-		return elements.get(0).text();
+		if (getElements().isEmpty()) return null;
+		return getElements().get(0).text();
 	}
 	
 	public String ownText() {
-		if (elements.isEmpty()) return null;
-		return elements.get(0).ownText();
+		if (getElements().isEmpty()) return null;
+		return getElements().get(0).ownText();
+	}
+	
+	public String attr(String key) {
+		if (getElements().isEmpty()) return null;
+		return getElements().get(0).attr(key);
 	}
 
 	public String categoryText() {
-		if (elements.isEmpty()) return null;
+		if (getElements().isEmpty()) return null;
 		String category = "";
-		for (Element element : elements) {
+		for (Element element : getElements()) {
 			if (!category.isEmpty()) category += " > ";
 			category += element.text();
 		}
@@ -35,8 +40,8 @@ public class SiteElement {
 	}
 
 	public DateTime textAsDateTime(DateTimeFormatter dateTimeFormatter) {
-		if (elements.isEmpty()) return null;
-		String dateTimeString = elements.get(0).text();
+		if (getElements().isEmpty()) return null;
+		String dateTimeString = getElements().get(0).text();
 		DateTime dateTime = null;
 		try {
 			dateTime = dateTimeFormatter.parseDateTime(dateTimeString);
@@ -44,6 +49,10 @@ public class SiteElement {
 			System.err.println("Problem while parsing DateTime: " + dateTimeString);
 		}
 		return dateTime;
+	}
+
+	public Elements getElements() {
+		return elements;
 	}
 
 }

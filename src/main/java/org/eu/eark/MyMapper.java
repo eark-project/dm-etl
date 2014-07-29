@@ -79,7 +79,7 @@ public class MyMapper extends Mapper<Text, Text, Text, Text> {
 					record.setField(q("date"), date);
 
 					String contentType = null;
-					String articleBody = null;
+					boolean hasArticleBody = false;
 					String headerLine;
 					do {
 						headerLine = HttpParser.readLine(warc, "UTF-8");
@@ -100,8 +100,11 @@ public class MyMapper extends Mapper<Text, Text, Text, Text> {
 						if (contentType.startsWith("text/html") && contentType.indexOf('=') != -1) {
 							String charset = contentType.substring(contentType.indexOf('=')+1);
 							System.out.println("  charset: " + charset);
-							WebScraper webScraper = WebScraper.createInstance(WebScraper.DER_STANDARD, new String(body,charset));
-							
+							WebScraper webScraper;
+							if (url.contains(WebScraper.FAZ))
+								webScraper = WebScraper.createInstance(WebScraper.FAZ, new String(body,charset));
+							else
+								webScraper = WebScraper.createInstance(WebScraper.DER_STANDARD, new String(body,charset));
 							List<String> fieldNames = Arrays.asList(WebScraper.CATEGORY, WebScraper.HEADLINE,
 									WebScraper.AUTHOR, WebScraper.DATE_PUBLISHED, WebScraper.ARTICLE_BODY, WebScraper.POSTINGS);
 							
@@ -110,12 +113,15 @@ public class MyMapper extends Mapper<Text, Text, Text, Text> {
 								if (fieldValue != null) {
 									System.out.println("  " + fieldName + ": " + fieldValue);
 									record.setField(q(fieldName), fieldValue);
+									if (fieldName.equals(WebScraper.ARTICLE_BODY)) {
+										hasArticleBody = true;
+									}
 								}
 							}
 						}
 					}
 					
-					if (articleBody == null) {
+					if (!hasArticleBody) {
 						Blob blob = new Blob(contentType, (long) body.length, url);
 						OutputStream os = table.getOutputStream(blob);
 						try {

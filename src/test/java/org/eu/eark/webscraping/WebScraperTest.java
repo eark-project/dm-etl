@@ -29,14 +29,21 @@ public class WebScraperTest {
 	
 	@Parameters
 	public static List<Object[]> data() throws IOException {
-		Document doc = Jsoup.connect("http://derstandard.at/2000003637703/Die-ZiB-zu-Mittag-schweigtHundepunks-nicht-im-Bild").get();
-		WebScraper derStandardScraper = new DerStandardWebScraper(doc);
+		Document derStandardDoc = Jsoup.connect("http://derstandard.at/2000003637703/Die-ZiB-zu-Mittag-schweigtHundepunks-nicht-im-Bild").get();
+		Document fazDoc = Jsoup.connect("http://www.faz.net/aktuell/feuilleton/kunstmarkt/raubgrabungen-die-wandernden-helme-aus-aragonien-13040696.html").get();
+		WebScraper derStandardScraper = new DerStandardWebScraper(derStandardDoc);
+		WebScraper fazScraper = new FazWebScraper(fazDoc);
 		return Arrays.asList(new Object[][] { { derStandardScraper, WebScraper.CATEGORY, "Etat > TV > TV-Tagebuch" },
 				{ derStandardScraper, WebScraper.HEADLINE, "Die \"ZiB\" zu Mittag schweigt: Hundepunks nicht im Bild" },
 				{ derStandardScraper, WebScraper.AUTHOR, "Christian Schachinger" },
 				{ derStandardScraper, WebScraper.DATE_PUBLISHED, new DateTime(2014, 7, 28, 17, 24, 0, 0) },
 				{ derStandardScraper, WebScraper.ARTICLE_BODY, "Facebook-Seite der \"ZiB\": " },
-				{ derStandardScraper, WebScraper.POSTINGS, 20 }});
+				{ derStandardScraper, WebScraper.POSTINGS, 21 },
+				{ fazScraper, WebScraper.CATEGORY, "Feuilleton > Kunstmarkt" },
+				{ fazScraper, WebScraper.HEADLINE, "Raubgrabungen Die wandernden Helme aus Aragonien" },
+				{ fazScraper, WebScraper.AUTHOR, "Clementine Kügler, Madrid" },
+				{ fazScraper, WebScraper.DATE_PUBLISHED, new DateTime(2014, 7, 11, 0, 0, 0, 0) },
+				{ fazScraper, WebScraper.ARTICLE_BODY, "\u00a9 INTERFOTO Seit Jahren kommt es in Spanien zu Plünderungen archäologischer Funde." }});
 	}
 	
 	@Test
