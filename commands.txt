@@ -1,5 +1,5 @@
 # copy solr schema and config
-CONFIG=~/workspace2/dm-etl/src/main/config
+CONFIG=~/workspace/dm-etl/src/main/config
 cd ~/solr-4.8.1/example
 cp $CONFIG/schema.xml solr/collection1/conf
 cp $CONFIG/solrconfig.xml solr/collection1/conf
@@ -16,7 +16,7 @@ service/lily-service start
 
 # lily preparation
 # ----------------
-CONFIG=~/workspace2/dm-etl/src/main/config
+CONFIG=~/workspace/dm-etl/src/main/config
 cd ~/lily-2.4/bin
 
 # importing lily shema
@@ -30,7 +30,7 @@ cd ~/lily-2.4/bin
 
 # job execution
 # -------------
-cd ~/workspace2/dm-etl
+cd ~/workspace/dm-etl
 
 # build jar
 mvn install

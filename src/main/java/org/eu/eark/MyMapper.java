@@ -10,13 +10,9 @@ import org.archive.io.ArchiveReader;
 import org.archive.io.ArchiveReaderFactory;
 import org.archive.io.ArchiveRecord;
 import org.archive.io.warc.WARCRecord;
+import org.eu.eark.webscraping.WebScraper;
 import org.joda.time.DateTime;
-import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.ISODateTimeFormat;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.lilyproject.client.LilyClient;
 import org.lilyproject.indexer.Indexer;
 import org.lilyproject.mapreduce.LilyMapReduceUtil;
@@ -25,7 +21,8 @@ import org.lilyproject.util.io.Closer;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Locale;
+import java.util.Arrays;
+import java.util.List;
 
 public class MyMapper extends Mapper<Text, Text, Text, Text> {
     private LilyClient lilyClient;
@@ -103,56 +100,17 @@ public class MyMapper extends Mapper<Text, Text, Text, Text> {
 						if (contentType.startsWith("text/html") && contentType.indexOf('=') != -1) {
 							String charset = contentType.substring(contentType.indexOf('=')+1);
 							System.out.println("  charset: " + charset);
-							Document document = Jsoup.parse(new String(body,charset));
-							Elements categoryElements = document.select("*[typeof=v:Breadcrumb] a[property=v:title]");
-							Elements headlineElements = document.select("*[itemtype=http://schema.org/Article] *[itemprop=headline]");
-							Elements authorElements = document.select("*[itemtype=http://schema.org/Article] *[itemprop=author]");
-							Elements datePublishedElements = document.select("*[itemtype=http://schema.org/Article] *[itemprop=datePublished]");
-							Elements articleBodyElements = document.select("*[itemtype=http://schema.org/Article] *[itemprop=articleBody]");
-							Elements postingsElements = document.select("#forumbarTop .info");
+							WebScraper webScraper = WebScraper.createInstance(WebScraper.DER_STANDARD, new String(body,charset));
 							
-							if (!categoryElements.isEmpty()) {
-								String category = "";
-								for (Element element : categoryElements) {
-									if (!category.isEmpty()) category += " > ";
-									category += element.text();
+							List<String> fieldNames = Arrays.asList(WebScraper.CATEGORY, WebScraper.HEADLINE,
+									WebScraper.AUTHOR, WebScraper.DATE_PUBLISHED, WebScraper.ARTICLE_BODY, WebScraper.POSTINGS);
+							
+							for (String fieldName : fieldNames) {
+								Object fieldValue = webScraper.getValue(fieldName);
+								if (fieldValue != null) {
+									System.out.println("  " + fieldName + ": " + fieldValue);
+									record.setField(q(fieldName), fieldValue);
 								}
-								System.out.println("  category: " + category);
-								record.setField(q("category"), category);
-							}
-							if (!headlineElements.isEmpty()) {
-								String headline = headlineElements.get(0).text();
-								System.out.println("  headline: " + headline);
-								record.setField(q("headline"), headline);
-							}
-							if (!authorElements.isEmpty()) {
-								String author = authorElements.get(0).text();
-								System.out.println("  author: " + author);
-								record.setField(q("author"), author);
-							}
-							if (!datePublishedElements.isEmpty()) {
-								String datePublishedString = datePublishedElements.get(0).text();
-								DateTime datePublished = DateTimeFormat.forPattern("dd. MMMM yyyy, HH:mm")
-										.withLocale(Locale.forLanguageTag("de-AT"))
-										.parseDateTime(datePublishedString);
-								System.out.println("  datePublished: " + datePublished);
-								record.setField(q("datePublished"), datePublished);
-							}
-							if (!articleBodyElements.isEmpty()) {
-								articleBody = articleBodyElements.get(0).text();
-								System.out.println("  articleBody: " + articleBody);
-								record.setField(q("articleBody"), articleBody);
-							}
-							if (!postingsElements.isEmpty()) {
-								String postingsString = postingsElements.get(0).ownText();
-								int postings = 0;
-								if (postingsString.contains(" Postings")) {
-									postings = Integer.parseInt(postingsString.substring(0, postingsString.indexOf(' ')));
-								} else if (postingsString.contains("von ")) {
-									postings = Integer.parseInt(postingsString.substring(postingsString.indexOf("von ") + 4));
-								}
-								System.out.println("  postings: " + postings);
-								record.setField(q("postings"), postings);
 							}
 						}
 					}
