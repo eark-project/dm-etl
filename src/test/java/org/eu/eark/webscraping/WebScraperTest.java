@@ -38,7 +38,7 @@ public class WebScraperTest {
 				{ derStandardScraper, WebScraper.AUTHOR, "Christian Schachinger" },
 				{ derStandardScraper, WebScraper.DATE_PUBLISHED, new DateTime(2014, 7, 28, 17, 24, 0, 0) },
 				{ derStandardScraper, WebScraper.ARTICLE_BODY, "Facebook-Seite der \"ZiB\": " },
-				{ derStandardScraper, WebScraper.POSTINGS, 21 },
+				{ derStandardScraper, WebScraper.POSTINGS, 23 },
 				{ fazScraper, WebScraper.CATEGORY, "Feuilleton > Kunstmarkt" },
 				{ fazScraper, WebScraper.HEADLINE, "Raubgrabungen Die wandernden Helme aus Aragonien" },
 				{ fazScraper, WebScraper.AUTHOR, "Clementine Kügler, Madrid" },

@@ -1,8 +1,9 @@
 package org.eu.eark.webscraping;
 
+import java.util.List;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
-
 
 public abstract class WebScraper {
 
@@ -28,5 +29,7 @@ public abstract class WebScraper {
 	}
 
 	public abstract Object getValue(String headline);
+
+	public abstract List<String> getFieldNames();
 
 }
