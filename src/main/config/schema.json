@@ -11,52 +11,52 @@
     {
       name: "p$date",
       valueType: "DATETIME",
-      scope: "non_versioned"
+      scope: "versioned"
     },
     {
       name: "p$contentType",
       valueType: "STRING",
-      scope: "non_versioned"
+      scope: "versioned"
     },
     {
       name: "p$size",
       valueType: "INTEGER",
-      scope: "non_versioned"
+      scope: "versioned"
     },
     {
       name: "p$category",
       valueType: "STRING",
-      scope: "non_versioned"
+      scope: "versioned"
     },
     {
       name: "p$headline",
       valueType: "STRING",
-      scope: "non_versioned"
+      scope: "versioned"
     },
     {
       name: "p$author",
       valueType: "STRING",
-      scope: "non_versioned"
+      scope: "versioned"
     },
     {
       name: "p$datePublished",
       valueType: "DATETIME",
-      scope: "non_versioned"
+      scope: "versioned"
     },
     {
       name: "p$articleBody",
       valueType: "STRING",
-      scope: "non_versioned"
+      scope: "versioned"
     },
     {
       name: "p$postings",
       valueType: "INTEGER",
-      scope: "non_versioned"
+      scope: "versioned_mutable"
     },
     {
       name: "p$body",
       valueType: "BLOB",
-      scope: "non_versioned"
+      scope: "versioned"
     }
   ],
   recordTypes: [

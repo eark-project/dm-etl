@@ -17,7 +17,7 @@ service/lily-service start
 # lily preparation
 # ----------------
 CONFIG=~/workspace/dm-etl/src/main/config
-cd ~/lily-2.4/bin
+cd /srv/lily-2.4/bin
 
 # importing lily shema
 ./lily-import -s $CONFIG/schema.json
@@ -41,16 +41,19 @@ cd target
 hadoop jar dm-etl-1.0-SNAPSHOT-mapreduce-job.jar -z localhost
 
 # list indexes
-~/lily-2.4/bin/lily-list-indexes
+/srv/lily-2.4/bin/lily-list-indexes
 
 # batch index building
-~/lily-2.4/bin/lily-update-index -n web --build-state BUILD_REQUESTED
+/srv/lily-2.4/bin/lily-update-index -n web --build-state BUILD_REQUESTED
 
 # remove indexer configuration
-~/lily-2.4/bin/lily-update-index -n web --state DELETE_REQUESTED
+/srv/lily-2.4/bin/lily-update-index -n web --state DELETE_REQUESTED
 
 # retrieve record
 curl http://localhost:12060/repository/record/UUID.28da4e87-fc76-423a-a23f-44ee7c9a35ca | json_reformat
+
+# getting blob content
+curl localhost:12060/repository/record/UUID.47e57ab2-43f9-46f4-9f25-48616ae0fe9f/field/n\$body/data?ns.n=at.ac.ait --output large-ad-img.png
 
 # delete record
 curl -X  DELETE http://localhost:12060/repository/record/UUID.ef05374e-7961-41c4-a10e-2224c30071d0

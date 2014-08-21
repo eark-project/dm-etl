@@ -27,8 +27,15 @@ public class FazWebScraper extends WebScraper {
 		category = siteElement.categoryText();
 		headline = new SiteElement(document, HEADLINE_SELECTOR).text();
 		author = new SiteElement(document, AUTHOR_SELECTOR).text();
-		datePublished = new SiteElement(document, DATE_PUBLISHED_SELECTOR).textAsDateTime(DateTimeFormat
-				.forPattern("dd.MM.yyyy,"));
+		String dateTimeString = new SiteElement(document, DATE_PUBLISHED_SELECTOR).text();
+		if (dateTimeString != null) {
+			dateTimeString.replace(",", "");
+			try {
+				datePublished = DateTimeFormat.forPattern("dd.MM.yyyy").parseDateTime(dateTimeString);
+			} catch (IllegalArgumentException e) {
+				System.err.println("Problem while parsing DateTime: " + dateTimeString);
+			}
+		}
 		articleBody = new SiteElement(document, ARTICLE_BODY_SELECTOR).text();
 	}
 
@@ -52,8 +59,7 @@ public class FazWebScraper extends WebScraper {
 
 	@Override
 	public List<String> getFieldNames() {
-		return Arrays.asList(WebScraper.CATEGORY, WebScraper.HEADLINE, WebScraper.AUTHOR, WebScraper.DATE_PUBLISHED,
-				WebScraper.ARTICLE_BODY);
+		return Arrays.asList(CATEGORY, HEADLINE, AUTHOR, DATE_PUBLISHED, ARTICLE_BODY);
 	}
 
 }

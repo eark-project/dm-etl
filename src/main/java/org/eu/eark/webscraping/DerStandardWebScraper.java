@@ -63,8 +63,7 @@ public class DerStandardWebScraper extends WebScraper {
 
 	@Override
 	public List<String> getFieldNames() {
-		return Arrays.asList(WebScraper.CATEGORY, WebScraper.HEADLINE, WebScraper.AUTHOR, WebScraper.DATE_PUBLISHED,
-				WebScraper.ARTICLE_BODY, WebScraper.POSTINGS);
+		return Arrays.asList(CATEGORY, HEADLINE, AUTHOR, DATE_PUBLISHED, ARTICLE_BODY, POSTINGS);
 	}
 
 }
