@@ -65,7 +65,7 @@ public class MyMapper extends Mapper<Text, Text, Text, Text> {
 						
 						Record existingRecord = null;
 						try {
-							existingRecord = table.read(id, q(WebScraper.ARTICLE_BODY));
+							existingRecord = table.read(id, q("date"), q("size"), q(WebScraper.ARTICLE_BODY));
 						} catch(RecordNotFoundException e) {
 							/*lily has no doesRecordExist function*/
 							System.out.println("  Record doesn't exist!");

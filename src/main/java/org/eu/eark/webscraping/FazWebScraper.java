@@ -29,7 +29,7 @@ public class FazWebScraper extends WebScraper {
 		author = new SiteElement(document, AUTHOR_SELECTOR).text();
 		String dateTimeString = new SiteElement(document, DATE_PUBLISHED_SELECTOR).text();
 		if (dateTimeString != null) {
-			dateTimeString.replace(",", "");
+			dateTimeString = dateTimeString.replace(",", "");
 			try {
 				datePublished = DateTimeFormat.forPattern("dd.MM.yyyy").parseDateTime(dateTimeString);
 			} catch (IllegalArgumentException e) {
