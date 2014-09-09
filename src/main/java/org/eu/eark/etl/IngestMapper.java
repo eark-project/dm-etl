@@ -15,6 +15,7 @@ import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
 import org.lilyproject.client.LilyClient;
 import org.lilyproject.indexer.Indexer;
+import org.lilyproject.indexer.IndexerException;
 import org.lilyproject.mapreduce.LilyMapReduceUtil;
 import org.lilyproject.repository.api.*;
 import org.lilyproject.util.io.Closer;
@@ -55,38 +56,38 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 		try (FSDataInputStream fis = FileSystem.get(new java.net.URI(path), context.getConfiguration()).open(
 				new Path(path))) {
 			LTable table = repository.getDefaultTable();
-			
+
 			try (ArchiveReader reader = ArchiveReaderFactory.get(path, fis, true)) {
 				for (ArchiveRecord archiveRecord : reader) {
 					WARCRecord warc = (WARCRecord) archiveRecord;
 					//System.out.println("Mimetype: " + warc.getHeader().getMimetype());
 					if (warc.getHeader().getMimetype().equals("application/http; msgtype=response")) {
-	
+
 						String url = warc.getHeader().getUrl();
 						System.out.println("url: " + url);
 						RecordId id = repository.getIdGenerator().newRecordId(url);
-						
+
 						Record existingRecord = null;
 						try {
 							existingRecord = table.read(id, q("date"), q("size"), q(WebScraper.ARTICLE_BODY));
-						} catch(RecordNotFoundException e) {
+						} catch (RecordNotFoundException e) {
 							/*lily has no doesRecordExist function*/
 							System.out.println("  Record doesn't exist!");
 						}
-						
+
 						Record record = table.newRecord(id);
 						record.setRecordType(q("Website"));
 						record.setField(q("url"), url);
-	
+
 						String dateString = warc.getHeader().getDate();
 						DateTime date = ISODateTimeFormat.localDateOptionalTimeParser().parseDateTime(
 								dateString.substring(0, dateString.length() - 1));
 						//System.out.println("  date: " + date);
 						record.setField(q("date"), date);
-	
+
 						String contentType = null;
 						boolean createNewVersion = true;
-						
+
 						String headerLine;
 						do {
 							headerLine = LaxHttpParser.readLine(warc, "UTF-8");
@@ -94,65 +95,35 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 								contentType = headerLine.substring(headerLine.indexOf(" ") + 1);
 							}
 						} while (!headerLine.equals(""));
-	
+
 						long length = warc.getHeader().getLength() - warc.getPosition();
 						int sizeLimit = Integer.MAX_VALUE - 1024;
 						byte[] body = readBytes(warc, length, sizeLimit);
 						//System.out.println("  size: " + body.length);
 						record.setField(q("size"), body.length);
-						
+
 						if (existingRecord != null) {
-							DateTime existingDate = (DateTime)existingRecord.getField(q("date"));
+							DateTime existingDate = (DateTime) existingRecord.getField(q("date"));
 							if (existingDate.equals(date))
 								createNewVersion = false;
-							if (existingRecord.hasField(q("size"))) {
-								int existingSize = (int)existingRecord.getField(q("size"));
+							else if (existingRecord.hasField(q("size"))) {
+								int existingSize = (int) existingRecord.getField(q("size"));
 								if (body.length == existingSize)
 									createNewVersion = false;
 							}
 						}
-						
+
 						if (contentType != null) {
-							//System.out.println("  contentType: " + contentType);
 							record.setField(q("contentType"), contentType);
-							if (contentType.startsWith("text/html") && contentType.indexOf('=') != -1) {
+							if (contentType.startsWith("text/html") && contentType.contains("=")) {
 								String charset = contentType.substring(contentType.indexOf('=') + 1);
-								//System.out.println("  charset: " + charset);
-								WebScraper webScraper;
-								String domain = url.split("/")[2];
-								if (domain.contains(WebScraper.FAZ))
-									webScraper = WebScraper.createInstance(WebScraper.FAZ, new String(body, charset));
-								else
-									webScraper = WebScraper.createInstance(WebScraper.DER_STANDARD, new String(body,
-											charset));
-								List<String> fieldNames = webScraper.getFieldNames();
-	
-								for (String fieldName : fieldNames) {
-									Object fieldValue = webScraper.getValue(fieldName);
-									if (fieldValue != null) {
-										//System.out.println("  " + fieldName + ": " + fieldValue);
-										record.setField(q(fieldName), fieldValue);
-										if (fieldName.equals(WebScraper.ARTICLE_BODY)) {
-											if (existingRecord != null && existingRecord.hasField(q(WebScraper.ARTICLE_BODY))) {
-												String existingArticleBody = (String)existingRecord.getField(q(WebScraper.ARTICLE_BODY));
-												if (fieldValue.equals(existingArticleBody)) {
-													System.out.println("  Article body is equivalent!");
-													if (webScraper.getFieldNames().contains(WebScraper.POSTINGS)) {
-														Record postingsRecord = table.newRecord(id);
-														postingsRecord.setField(q(WebScraper.POSTINGS), webScraper.getValue(WebScraper.POSTINGS));
-														table.update(postingsRecord);
-														Indexer indexer = lilyClient.getIndexer();
-														indexer.index(table.getTableName(), postingsRecord.getId());
-													}
-													createNewVersion = false;
-												}
-											}
-										}
-									}
-								}
+								int status = extractContent(url.split("/")[2], id, existingRecord,
+										record, new String(body, charset));
+								if (status == 1) createNewVersion = true;
+								else if (status == 2) createNewVersion = false;
 							}
 						}
-						
+
 						if (createNewVersion) {
 							if (body.length > 0) {
 								Blob blob = new Blob(contentType, (long) body.length, url);
@@ -161,13 +132,13 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 								}
 								record.setField(q("body"), blob);
 							}
-						
+
 							table.createOrUpdate(record);
 							//PrintUtil.print(record, repository);
 							Indexer indexer = lilyClient.getIndexer();
 							indexer.index(table.getTableName(), record.getId());
 						}
-	
+
 					}
 				}
 			}
@@ -176,6 +147,55 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	/**
+	 * 
+	 * @return 	0 iff no articleBody was found
+	 * 			1 iff articleBody is new
+	 * 			2 iff articleBody isn't new
+	 */
+	private int extractContent(String domain, RecordId id, Record existingRecord, Record record, String html)
+			throws RecordException, RepositoryException, InterruptedException, IndexerException {
+		LTable table = repository.getDefaultTable();
+		int status = 0;
+		//System.out.println("  contentType: " + contentType);
+
+		//System.out.println("  charset: " + charset);
+		WebScraper webScraper;
+		if (domain.contains(WebScraper.FAZ))
+			webScraper = WebScraper.createInstance(WebScraper.FAZ, html);
+		else
+			webScraper = WebScraper.createInstance(WebScraper.DER_STANDARD, html);
+		List<String> fieldNames = webScraper.getFieldNames();
+
+		for (String fieldName : fieldNames) {
+			Object fieldValue = webScraper.getValue(fieldName);
+			if (fieldValue != null) {
+				//System.out.println("  " + fieldName + ": " + fieldValue);
+				record.setField(q(fieldName), fieldValue);
+				if (fieldName.equals(WebScraper.ARTICLE_BODY)) {
+					if (existingRecord != null && existingRecord.hasField(q(WebScraper.ARTICLE_BODY))) {
+						String existingArticleBody = (String) existingRecord.getField(q(WebScraper.ARTICLE_BODY));
+						if (fieldValue.equals(existingArticleBody)) {
+							System.out.println("  Article body is equivalent!");
+							if (webScraper.getFieldNames().contains(WebScraper.POSTINGS)) {
+								Record postingsRecord = table.newRecord(id);
+								postingsRecord.setField(q(WebScraper.POSTINGS),
+										webScraper.getValue(WebScraper.POSTINGS));
+								table.update(postingsRecord);
+								Indexer indexer = lilyClient.getIndexer();
+								indexer.index(table.getTableName(), postingsRecord.getId());
+							}
+							return 2;
+						}
+					}
+					status = 1;
+				}
+			}
+		}
+
+		return status;
 	}
 
 	private static QName q(String name) {
