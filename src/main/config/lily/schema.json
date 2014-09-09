@@ -51,7 +51,7 @@
     {
       name: "p$postings",
       valueType: "INTEGER",
-      scope: "versioned_mutable"
+      scope: "non_versioned"
     },
     {
       name: "p$body",

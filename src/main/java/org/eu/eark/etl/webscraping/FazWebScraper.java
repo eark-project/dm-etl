@@ -1,4 +1,4 @@
-package org.eu.eark.webscraping;
+package org.eu.eark.etl.webscraping;
 
 import java.util.Arrays;
 import java.util.List;
@@ -7,6 +7,9 @@ import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.jsoup.nodes.Document;
 
+/**
+ * extract some specific information from web pages of the domain faz.net
+ */
 public class FazWebScraper extends WebScraper {
 
 	private static final String CATEGORY_SELECTOR = "*[itemtype=http://data-vocabulary.org/Breadcrumb] *[itemprop=title]";

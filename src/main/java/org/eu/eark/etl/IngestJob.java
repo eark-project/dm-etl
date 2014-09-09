@@ -1,4 +1,4 @@
-package org.eu.eark;
+package org.eu.eark.etl;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -21,12 +21,15 @@ import org.lilyproject.mapreduce.LilyMapReduceUtil;
 
 import java.io.IOException;
 
-public class MyJob extends Configured implements Tool {
+/**
+ * configures and starts the MapReduce job
+ */
+public class IngestJob extends Configured implements Tool {
     private String zkConnectString;
 
     public static void main(String[] args) throws Exception {
         // Let <code>ToolRunner</code> handle generic command-line options
-        int res = ToolRunner.run(new Configuration(), new MyJob(), args);
+        int res = ToolRunner.run(new Configuration(), new IngestJob(), args);
         System.exit(res);
     }
 
@@ -39,17 +42,17 @@ public class MyJob extends Configured implements Tool {
 
         Configuration config = getConf();
 
-        Job job = new Job(config, "MyJob");
-        job.setJarByClass(MyJob.class);
+        Job job = new Job(config, "IngestJob");
+        job.setJarByClass(IngestJob.class);
 
-        job.setMapperClass(MyMapper.class);
+        job.setMapperClass(IngestMapper.class);
         job.setNumReduceTasks(0);
 
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
         
         job.setInputFormatClass(FilenameInputFormat.class);
-        // The reducer writes directly to Lily, so for Hadoop there is no output to produce
+        // The mapper writes directly to Lily, so for Hadoop there is no output to produce
         job.setOutputFormatClass(NullOutputFormat.class);
 
         // Utility method will configure everything related to LilyInputFormat

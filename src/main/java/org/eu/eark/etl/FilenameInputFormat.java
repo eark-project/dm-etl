@@ -1,4 +1,4 @@
-package org.eu.eark;
+package org.eu.eark.etl;
 
 import java.io.*;
 

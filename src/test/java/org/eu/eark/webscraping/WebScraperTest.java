@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+import org.eu.eark.etl.webscraping.DerStandardWebScraper;
+import org.eu.eark.etl.webscraping.FazWebScraper;
+import org.eu.eark.etl.webscraping.WebScraper;
 import org.joda.time.DateTime;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;

@@ -1,4 +1,4 @@
-package org.eu.eark.webscraping;
+package org.eu.eark.etl.webscraping;
 
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatter;
@@ -6,6 +6,9 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+/**
+ * convenience wrapper for jsoup library
+ */
 public class SiteElement {
 
 	private Elements elements;

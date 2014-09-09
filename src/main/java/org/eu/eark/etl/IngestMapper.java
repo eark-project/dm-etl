@@ -1,4 +1,4 @@
-package org.eu.eark;
+package org.eu.eark.etl;
 
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -10,7 +10,7 @@ import org.archive.io.ArchiveReaderFactory;
 import org.archive.io.ArchiveRecord;
 import org.archive.io.warc.WARCRecord;
 import org.archive.util.LaxHttpParser;
-import org.eu.eark.webscraping.WebScraper;
+import org.eu.eark.etl.webscraping.WebScraper;
 import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
 import org.lilyproject.client.LilyClient;
@@ -23,7 +23,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
 
-public class MyMapper extends Mapper<Text, Text, Text, Text> {
+/**
+ * read records from warc files, extract information and store it in lily repository
+ */
+public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 	private LilyClient lilyClient;
 	private LRepository repository;
 
@@ -82,7 +85,6 @@ public class MyMapper extends Mapper<Text, Text, Text, Text> {
 						record.setField(q("date"), date);
 	
 						String contentType = null;
-						boolean hasArticleBody = false;
 						boolean createNewVersion = true;
 						
 						String headerLine;
@@ -117,7 +119,8 @@ public class MyMapper extends Mapper<Text, Text, Text, Text> {
 								String charset = contentType.substring(contentType.indexOf('=') + 1);
 								//System.out.println("  charset: " + charset);
 								WebScraper webScraper;
-								if (url.contains(WebScraper.FAZ))
+								String domain = url.split("/")[2];
+								if (domain.contains(WebScraper.FAZ))
 									webScraper = WebScraper.createInstance(WebScraper.FAZ, new String(body, charset));
 								else
 									webScraper = WebScraper.createInstance(WebScraper.DER_STANDARD, new String(body,
@@ -132,18 +135,18 @@ public class MyMapper extends Mapper<Text, Text, Text, Text> {
 										if (fieldName.equals(WebScraper.ARTICLE_BODY)) {
 											if (existingRecord != null && existingRecord.hasField(q(WebScraper.ARTICLE_BODY))) {
 												String existingArticleBody = (String)existingRecord.getField(q(WebScraper.ARTICLE_BODY));
-												if (fieldValue.equals(existingArticleBody))
-												System.out.println("  Article body is equivalent!");
-												if (webScraper.getFieldNames().contains(WebScraper.POSTINGS)) {
-													Record postingsRecord = table.newRecord(id);
-													postingsRecord.setField(q(WebScraper.POSTINGS), webScraper.getValue(WebScraper.POSTINGS));
-													table.update(postingsRecord);
-													Indexer indexer = lilyClient.getIndexer();
-													indexer.index(table.getTableName(), postingsRecord.getId());
+												if (fieldValue.equals(existingArticleBody)) {
+													System.out.println("  Article body is equivalent!");
+													if (webScraper.getFieldNames().contains(WebScraper.POSTINGS)) {
+														Record postingsRecord = table.newRecord(id);
+														postingsRecord.setField(q(WebScraper.POSTINGS), webScraper.getValue(WebScraper.POSTINGS));
+														table.update(postingsRecord);
+														Indexer indexer = lilyClient.getIndexer();
+														indexer.index(table.getTableName(), postingsRecord.getId());
+													}
+													createNewVersion = false;
 												}
-												createNewVersion = false;
 											}
-											hasArticleBody = true;
 										}
 									}
 								}
@@ -151,7 +154,7 @@ public class MyMapper extends Mapper<Text, Text, Text, Text> {
 						}
 						
 						if (createNewVersion) {
-							if (!hasArticleBody && body.length > 0) {
+							if (body.length > 0) {
 								Blob blob = new Blob(contentType, (long) body.length, url);
 								try (OutputStream os = table.getOutputStream(blob)) {
 									os.write(body);

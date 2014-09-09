@@ -1,10 +1,13 @@
-package org.eu.eark.webscraping;
+package org.eu.eark.etl.webscraping;
 
 import java.util.List;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
+/**
+ * extract some specific information from html code
+ */
 public abstract class WebScraper {
 
 	public static final String CATEGORY = "category";
@@ -14,7 +17,7 @@ public abstract class WebScraper {
 	public static final String ARTICLE_BODY = "articleBody";
 	public static final String POSTINGS = "postings";
 	public static final String DER_STANDARD = "derstandard.at";
-	public static final String FAZ = "www.faz.net";
+	public static final String FAZ = "faz.net";
 
 	public static WebScraper createInstance(String type, String site) {
 		Document document = Jsoup.parse(site);

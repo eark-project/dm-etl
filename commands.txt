@@ -1,8 +1,8 @@
 # copy solr schema and config
-CONFIG=~/workspace/dm-etl/src/main/config
+SOLR_CONFIG=~/workspace/dm-etl/src/main/config/solr
 cd ~/solr-4.8.1/example
-cp $CONFIG/schema.xml solr/collection1/conf
-cp $CONFIG/solrconfig.xml solr/collection1/conf
+cp $SOLR_CONFIG/schema.xml solr/collection1/conf
+cp $SOLR_CONFIG/solrconfig.xml solr/collection1/conf
 
 # starting solr
 java -jar start.jar
@@ -15,15 +15,15 @@ java -Dsolr.clustering.enabled=true -jar start.jar
 
 # lily preparation
 # ----------------
-CONFIG=~/workspace/dm-etl/src/main/config
+LILY_CONFIG=~/workspace/dm-etl/src/main/config/lily
 cd /srv/lily-2.4/bin
 
 # importing lily shema
-./lily-import -s $CONFIG/schema.json
+./lily-import -s $LILY_CONFIG/schema.json
 
 # add indexer configuration
 ./lily-add-index --name web \
-               --indexer-config $CONFIG/indexerconf.xml \
+               --indexer-config $LILY_CONFIG/indexerconf.xml \
                --solr-mode classic \
                --solr-shards shard1:http://localhost:8983/solr
 
