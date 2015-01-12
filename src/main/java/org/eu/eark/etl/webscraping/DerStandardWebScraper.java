@@ -18,7 +18,8 @@ public class DerStandardWebScraper extends WebScraper {
 	private static final String AUTHOR_SELECTOR = "*[itemtype=http://schema.org/Article] *[itemprop=author]";
 	private static final String DATE_PUBLISHED_SELECTOR = "*[itemtype=http://schema.org/Article] *[itemprop=datePublished]";
 	private static final String ARTICLE_BODY_SELECTOR = "*[itemtype=http://schema.org/Article] *[itemprop=articleBody]";
-	private static final String POSTINGS_SELECTOR = "#forumbarTop .info";
+	private static final String POSTINGS_SELECTOR_OLD = "#forumbarTop .info";
+	private static final String POSTINGS_SELECTOR = "#weiterLesenScroll .active.light small";
 	private String category;
 	private String headline;
 	private String author;
@@ -33,14 +34,18 @@ public class DerStandardWebScraper extends WebScraper {
 		datePublished = new SiteElement(document, DATE_PUBLISHED_SELECTOR).textAsDateTime(DateTimeFormat.forPattern(
 				"dd. MMMM yyyy, HH:mm").withLocale(Locale.forLanguageTag("de-AT")));
 		articleBody = new SiteElement(document, ARTICLE_BODY_SELECTOR).text();
-		String postingsString = new SiteElement(document, POSTINGS_SELECTOR).ownText();
-		if (postingsString != null) {
+		String postingsStringOld = new SiteElement(document, POSTINGS_SELECTOR_OLD).ownText();
+		if (postingsStringOld != null) {
 			postings = 0;
-			if (postingsString.contains(" Postings")) {
-				postings = Integer.parseInt(postingsString.substring(0, postingsString.indexOf(' ')));
-			} else if (postingsString.contains("von ")) {
-				postings = Integer.parseInt(postingsString.substring(postingsString.indexOf("von ") + 4));
+			if (postingsStringOld.contains(" Postings")) {
+				postings = Integer.parseInt(postingsStringOld.substring(0, postingsStringOld.indexOf(' ')));
+			} else if (postingsStringOld.contains("von ")) {
+				postings = Integer.parseInt(postingsStringOld.substring(postingsStringOld.indexOf("von ") + 4));
 			}
+		} else {
+			String postingsString = new SiteElement(document, POSTINGS_SELECTOR).ownText();
+			if (postingsString != null)
+				postings = Integer.parseInt(postingsString.substring(1, postingsString.length()-1));
 		}
 	}
 

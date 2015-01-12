@@ -33,15 +33,23 @@ public class WebScraperTest {
 	@Parameters
 	public static List<Object[]> data() throws IOException {
 		Document derStandardDoc = Jsoup.connect("http://derstandard.at/2000003637703/Die-ZiB-zu-Mittag-schweigtHundepunks-nicht-im-Bild").get();
+		Document currentDerStandardDoc = Jsoup.connect("http://derstandard.at/2000010052167/ORF-will-Schalkos-neue-Serie-erst-ueber-Webplattform-Flimmit-verkaufen").get();
 		Document fazDoc = Jsoup.connect("http://www.faz.net/aktuell/feuilleton/kunstmarkt/raubgrabungen-die-wandernden-helme-aus-aragonien-13040696.html").get();
 		WebScraper derStandardScraper = new DerStandardWebScraper(derStandardDoc);
+		WebScraper currentDerStandardScraper = new DerStandardWebScraper(currentDerStandardDoc);
 		WebScraper fazScraper = new FazWebScraper(fazDoc);
 		return Arrays.asList(new Object[][] { { derStandardScraper, WebScraper.CATEGORY, "Etat > TV > TV-Tagebuch" },
 				{ derStandardScraper, WebScraper.HEADLINE, "Die \"ZiB\" zu Mittag schweigt: Hundepunks nicht im Bild" },
 				{ derStandardScraper, WebScraper.AUTHOR, "Christian Schachinger" },
 				{ derStandardScraper, WebScraper.DATE_PUBLISHED, new DateTime(2014, 7, 28, 17, 24, 0, 0) },
 				{ derStandardScraper, WebScraper.ARTICLE_BODY, "Facebook-Seite der \"ZiB\": " },
-				{ derStandardScraper, WebScraper.POSTINGS, 23 },
+				{ derStandardScraper, WebScraper.POSTINGS, null },
+				{ currentDerStandardScraper, WebScraper.CATEGORY, "Etat > ORF > ORF-Programm" },
+				{ currentDerStandardScraper, WebScraper.HEADLINE, "ORF will Schalkos neue Serie erst über Website Flimmit verkaufen" },
+				{ currentDerStandardScraper, WebScraper.AUTHOR, null },
+				{ currentDerStandardScraper, WebScraper.DATE_PUBLISHED, new DateTime(2015, 1, 7, 7, 41, 0, 0) },
+				{ currentDerStandardScraper, WebScraper.ARTICLE_BODY, "Plan: im Frühjahr" },
+				{ currentDerStandardScraper, WebScraper.POSTINGS, 133 },
 				{ fazScraper, WebScraper.CATEGORY, "Feuilleton > Kunstmarkt" },
 				{ fazScraper, WebScraper.HEADLINE, "Raubgrabungen Die wandernden Helme aus Aragonien" },
 				{ fazScraper, WebScraper.AUTHOR, "Clementine Kügler, Madrid" },

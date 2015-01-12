@@ -180,12 +180,14 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 						if (fieldValue.equals(existingArticleBody)) {
 							System.out.println("  Article body is equivalent!");
 							if (webScraper.getFieldNames().contains(WebScraper.POSTINGS)) {
-								Record postingsRecord = table.newRecord(id);
-								postingsRecord.setField(q(WebScraper.POSTINGS),
-										webScraper.getValue(WebScraper.POSTINGS));
-								table.update(postingsRecord);
-								Indexer indexer = lilyClient.getIndexer();
-								indexer.index(table.getTableName(), postingsRecord.getId());
+								Object postings = webScraper.getValue(WebScraper.POSTINGS);
+								if (postings != null) {
+									Record postingsRecord = table.newRecord(id);
+									postingsRecord.setField(q(WebScraper.POSTINGS), postings);
+									table.update(postingsRecord);
+									Indexer indexer = lilyClient.getIndexer();
+									indexer.index(table.getTableName(), postingsRecord.getId());
+								}
 							}
 							return 2;
 						}

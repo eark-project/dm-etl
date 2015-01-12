@@ -1,6 +1,6 @@
 # copy solr schema and config
 SOLR_CONFIG=~/workspace/dm-etl/src/main/config/solr
-cd ~/solr-4.8.1/example
+cd /srv/solr-4.9.0/example
 cp $SOLR_CONFIG/schema.xml solr/collection1/conf
 cp $SOLR_CONFIG/solrconfig.xml solr/collection1/conf
 
@@ -9,6 +9,12 @@ java -jar start.jar
 
 # starting solr with carrot2 clustering
 java -Dsolr.clustering.enabled=true -jar start.jar
+
+# starting SolrCloud on cluster (first shard)
+java -DzkHost=s3scape02/solr -DnumShards=2 -Dbootstrap_confdir=./solr/collection1/conf -Dcollection.configName=web -jar start.jar
+
+# starting SolrCloud on cluster (other shards)
+java -DzkHost=s3scape02/solr -jar start.jar
 
 # starting lily
 /srv/lily-2.4/service/lily-service start
@@ -22,10 +28,10 @@ cd /srv/lily-2.4/bin
 ./lily-import -s $LILY_CONFIG/schema.json
 
 # add indexer configuration
-./lily-add-index --name web \
-               --indexer-config $LILY_CONFIG/indexerconf.xml \
-               --solr-mode classic \
-               --solr-shards shard1:http://localhost:8983/solr
+./lily-add-index -n web -c $LILY_CONFIG/indexerconf.xml -sm classic -s shard1:http://localhost:8983/solr
+               
+# add indexer configuration (SorlCloud mode)
+./lily-add-index -n web -c $LILY_CONFIG/indexerconf.xml -sm cloud -sc collection1
 
 # job execution
 # -------------
@@ -37,7 +43,7 @@ mvn install
 cd target
 
 # start map-reduce job
-hadoop jar dm-etl-1.0-SNAPSHOT-mapreduce-job.jar -z localhost
+hadoop jar dm-etl-1.0.0-SNAPSHOT-mapreduce-job.jar -z localhost
 
 # list indexes
 /srv/lily-2.4/bin/lily-list-indexes
@@ -59,3 +65,13 @@ curl -X  DELETE http://localhost:12060/repository/record/UUID.ef05374e-7961-41c4
 
 # clear solr index
 curl http://localhost:8983/solr/update/?commit=true -d "<delete><query>*:*</query></delete>" -H "Content-Type: text/xml"
+
+# drop lily hbase tables (via hbase shell)
+disable 'blob'
+disable 'blobincubator'
+disable 'record'
+disable 'type'
+drop 'blob'
+drop 'blobincubator'
+drop 'record'
+drop 'type'
