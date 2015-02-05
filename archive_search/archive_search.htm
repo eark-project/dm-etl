@@ -4,16 +4,77 @@
 <head>
 <meta charset="UTF-8">
 <title>Archive Search</title>
+<script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+<script src="http://code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
 <script src="archive_search.js"></script>
+<link rel="stylesheet" href="http://code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
+<link rel="stylesheet" href="archive_search.css">
 </head>
 
 <body>
-<h1>Find in Files</h1>
-<form name="find">
-  <input type="text" name="queryString">
-  <input type="button" value="Search" onclick="askSolr()">
-  <p id="output"></p>
-</form>
+  <div class="content">
+    <h1>Find in Newspapers</h1>
+    <div class="left-box">
+      <form name="find">
+        <div>
+          <div class="label">
+            <label for="queryString">contained word</label>
+          </div>
+          <input class="input" type="text" name="queryString">
+        </div>
+        <div>
+          <div class="label">
+            <label for="headline">headline</label>
+          </div>
+          <input class="input" type="text" name="headline">
+        </div>
+        <div>
+          <div class="label">
+            <label for="url">newspaper</label>
+          </div>
+          <select class="input" name="url" size="2" multiple>
+            <option value="*derstandard.at">Der Standard</option>
+            <option value="*faz.net">Frankfurter Allgemeine</option>
+          </select>
+        </div>
+        <div>
+          <div class="label">
+            <label for="from">published after</label>
+          </div>
+          <input id="from" class="input" type="text" name="from">
+        </div>
+        <div>
+          <div class="label">
+            <label for="to">published before</label>
+          </div>
+          <input id="to" class="input" type="text" name="to">
+        </div>
+        <div>
+          <div class="label">
+            <label for="sort">sort</label>
+          </div>
+          <select class="input" name="sort">
+            <option value="">relevance</option>
+            <option value="size asc">size (ascending)</option>
+            <option value="size desc">size (descending)</option>
+            <option value="postings desc">postings</option>
+          </select>
+        </div>
+        <input type="button" value="Search" onclick="askSolr(0)">
+      </form>
+    </div>
+    <div class="right-box">
+      <div id="output" class="output"></div>
+    </div>
+  </div>
+  <div class="logos">
+    <div class="half">
+      <img class="logo" src="ait_logo.jpg" alt="AIT">
+    </div>
+    <div class="half">
+      <img class="logo" src="eark_logo.gif" alt="E-ARK">
+    </div>
+  </div>
 </body>
 
 </html> 
