@@ -49,7 +49,7 @@ public class WebScraperTest {
 				{ currentDerStandardScraper, WebScraper.AUTHOR, null },
 				{ currentDerStandardScraper, WebScraper.DATE_PUBLISHED, new DateTime(2015, 1, 7, 7, 41, 0, 0) },
 				{ currentDerStandardScraper, WebScraper.ARTICLE_BODY, "Plan: im Frühjahr" },
-				{ currentDerStandardScraper, WebScraper.POSTINGS, 133 },
+				{ currentDerStandardScraper, WebScraper.POSTINGS, 135 },
 				{ fazScraper, WebScraper.CATEGORY, "Feuilleton > Kunstmarkt" },
 				{ fazScraper, WebScraper.HEADLINE, "Raubgrabungen Die wandernden Helme aus Aragonien" },
 				{ fazScraper, WebScraper.AUTHOR, "Clementine Kügler, Madrid" },
