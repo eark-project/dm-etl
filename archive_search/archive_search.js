@@ -24,7 +24,7 @@ $(function() {
 
 function callback(data) {
   var lilyEndpoint = 'http://localhost:12060/repository/record/';
-  var lilyNamespace = 'org.eu.eark';
+  var lilyNamespace = 'at.ac.ait';
   
   var results = data.response.numFound;
   var resultMessage = results + ' result';
