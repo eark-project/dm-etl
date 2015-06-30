@@ -1,0 +1,4 @@
+crontab -e
+
+0 0 1 * * /srv/cluster_scripts/start_crawl_job.sh
+0 0 8 * * /srv/cluster_scripts/start_ingest_job.sh
