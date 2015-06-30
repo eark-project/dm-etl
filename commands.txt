@@ -11,7 +11,7 @@ java -jar start.jar
 java -Dsolr.clustering.enabled=true -jar start.jar
 
 # starting SolrCloud on cluster (first shard)
-java -DzkHost=s3scape02/solr -DnumShards=2 -Dbootstrap_confdir=./solr/collection1/conf -Dcollection.configName=web -jar start.jar
+java -DzkHost=s3scape02/solr -DnumShards=2 -Dbootstrap_conf=true -jar start.jar
 
 # starting SolrCloud on cluster (other shards)
 java -DzkHost=s3scape02/solr -jar start.jar
