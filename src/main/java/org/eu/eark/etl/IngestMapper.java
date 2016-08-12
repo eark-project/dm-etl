@@ -1,8 +1,23 @@
 package org.eu.eark.etl;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.MasterNotRunningException;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.ZooKeeperConnectionException;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
+import org.apache.hadoop.hbase.client.Admin;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.io.compress.Compression.Algorithm;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.archive.io.ArchiveReader;
@@ -13,38 +28,65 @@ import org.archive.util.LaxHttpParser;
 import org.eu.eark.etl.webscraping.WebScraper;
 import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
-import org.lilyproject.client.LilyClient;
-import org.lilyproject.indexer.Indexer;
-import org.lilyproject.indexer.IndexerException;
-import org.lilyproject.mapreduce.LilyMapReduceUtil;
-import org.lilyproject.repository.api.*;
-import org.lilyproject.util.io.Closer;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
 
 /**
- * read records from warc files, extract information and store it in lily repository
+ * read records from warc files, extract information and store it in lily
+ * repository
  */
 public class IngestMapper extends Mapper<Text, Text, Text, Text> {
-	private LilyClient lilyClient;
-	private LRepository repository;
-
+	// private LilyClient lilyClient;
+	// private LRepository repository;
+	public static final String REPOSITORY_TABLE_NAME = "document_repository";
+	public static final String CF_REPOSITORY = "doc_colf";
+	
+	public String[] repositoryFields = {"url", "contentType"};
+	
 	@Override
-	protected void setup(Context context) throws IOException, InterruptedException {
+	protected void setup(Context context) throws IOException,
+			InterruptedException {
 		super.setup(context);
-		this.lilyClient = LilyMapReduceUtil.getLilyClient(context.getConfiguration());
-		try {
-			this.repository = lilyClient.getDefaultRepository();
-		} catch (RepositoryException e) {
-			throw new RuntimeException("Failed to get repository", e);
+
+		/*
+		 * this.lilyClient =
+		 * LilyMapReduceUtil.getLilyClient(context.getConfiguration()); try {
+		 * this.repository = lilyClient.getDefaultRepository(); } catch
+		 * (RepositoryException e) { throw new
+		 * RuntimeException("Failed to get repository", e); }
+		 */
+		Configuration hBaseConfig = HBaseConfiguration.create();
+		Connection connection = ConnectionFactory.createConnection(hBaseConfig);
+		Admin admin = connection.getAdmin();
+		HTableDescriptor tableDsc = new HTableDescriptor(TableName.valueOf(REPOSITORY_TABLE_NAME));
+		if(!admin.tableExists(tableDsc.getTableName())) {
+			tableDsc.addFamily(new HColumnDescriptor(CF_REPOSITORY)/*.setCompressionType(Algorithm.SNAPPY)*/);
+			admin.createTable(tableDsc);
+			
+			HColumnDescriptor urlCol = new HColumnDescriptor(repositoryFields[0]);
+      //newColumn.setCompactionCompressionType(Algorithm.GZ);
+      urlCol.setMaxVersions(HConstants.ALL_VERSIONS);
+      admin.addColumn(tableDsc.getTableName(), urlCol);
+      
+			HColumnDescriptor ctCol = new HColumnDescriptor(repositoryFields[1]);
+      //newColumn.setCompactionCompressionType(Algorithm.GZ);
+      ctCol.setMaxVersions(HConstants.ALL_VERSIONS);
+      admin.addColumn(tableDsc.getTableName(), ctCol);
 		}
+		
+		Table table = connection.getTable(tableDsc.getTableName());
+		Put put = new Put(Bytes.toBytes("http://url.com"));
+		put.addColumn(Bytes.toBytes(CF_REPOSITORY), Bytes.toBytes(repositoryFields[0]), Bytes.toBytes("http://url.com"));
+		put.addColumn(Bytes.toBytes(CF_REPOSITORY), Bytes.toBytes(repositoryFields[1]), Bytes.toBytes("text/html"));
+		table.put(put);
 	}
 
 	@Override
-	protected void cleanup(Context context) throws IOException, InterruptedException {
-		Closer.close(lilyClient);
+	protected void cleanup(Context context) throws IOException,
+			InterruptedException {
+		// Closer.close(lilyClient);
 		super.cleanup(context);
 	}
 
@@ -52,26 +94,47 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 	protected void map(Text key, Text value, Context context) throws IOException, InterruptedException {
 
 		String path = key.toString();
+		System.out.println("IngestMapper.map() received path: "+path);
 
-		try (FSDataInputStream fis = FileSystem.get(new java.net.URI(path), context.getConfiguration()).open(
-				new Path(path))) {
-			LTable table = repository.getDefaultTable();
+		
+		try (FSDataInputStream fis = FileSystem.get(new java.net.URI(path), context.getConfiguration()).open(new Path(path))) {
+			//LTable table = repository.getDefaultTable();
 
 			try (ArchiveReader reader = ArchiveReaderFactory.get(path, fis, true)) {
 				for (ArchiveRecord archiveRecord : reader) {
 					WARCRecord warc = (WARCRecord) archiveRecord;
-					//System.out.println("Mimetype: " + warc.getHeader().getMimetype());
+					System.out.println("Mimetype: " + warc.getHeader().getMimetype());
 					if (warc.getHeader().getMimetype().equals("application/http; msgtype=response")) {
 
 						String url = warc.getHeader().getUrl();
 						System.out.println("url: " + url);
+						
+						
+			      //name: "p$Website",
+			      //fields: [
+			      //  string {name: "p$url", mandatory: true},
+			      //  datetime {name: "p$date", mandatory: true},
+			      //  string {name: "p$contentType", mandatory: false},
+			      //  integer {name: "p$size", mandatory: true},
+			      //  string {name: "p$category", mandatory: false},
+			      //  string {name: "p$headline", mandatory: false},
+			      //  string {name: "p$author", mandatory: false},
+			      //  datetime {name: "p$datePublished", mandatory: false},
+			      //  string {name: "p$articleBody", mandatory: false},
+			      //  integer {name: "p$postings", mandatory: false},
+			      //  blob {name: "p$body", mandatory: false}
+			      //]
+
+						
+						
+						/*
 						RecordId id = repository.getIdGenerator().newRecordId(url);
 
 						Record existingRecord = null;
 						try {
 							existingRecord = table.read(id, q("date"), q("size"), q(WebScraper.ARTICLE_BODY));
 						} catch (RecordNotFoundException e) {
-							/*lily has no doesRecordExist function*/
+							//lily has no doesRecordExist function
 							System.out.println("  Record doesn't exist!");
 						}
 
@@ -104,15 +167,17 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 
 						if (existingRecord != null) {
 							DateTime existingDate = (DateTime) existingRecord.getField(q("date"));
-							if (existingDate.equals(date))
+							if (existingDate.equals(        FileInputFormat.adate))
 								createNewVersion = false;
 							else if (existingRecord.hasField(q("size"))) {
 								int existingSize = (int) existingRecord.getField(q("size"));
 								if (body.length == existingSize)
 									createNewVersion = false;
 							}
+							
 						}
 
+					
 						if (contentType != null) {
 							record.setField(q("contentType"), contentType);
 							if (contentType.startsWith("text/html") && contentType.contains("=")) {
@@ -138,78 +203,70 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 							Indexer indexer = lilyClient.getIndexer();
 							indexer.index(table.getTableName(), record.getId());
 						}
-
+					*/
 					}
+					
 				}
+				
 			}
-		} catch (InterruptedException e) {
+		} /* rainer catch (InterruptedException e) {
 			throw e;
-		} catch (Exception e) {
+		} */ catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
 
 	/**
 	 * 
-	 * @return 	0 iff no articleBody was found
-	 * 			1 iff articleBody is new
-	 * 			2 iff articleBody isn't new
+	 * @return 0 iff no articleBody was found 1 iff articleBody is new 2 iff
+	 *         articleBody isn't new
 	 */
-	private int extractContent(String domain, RecordId id, Record existingRecord, Record record, String html)
-			throws RecordException, RepositoryException, InterruptedException, IndexerException {
-		LTable table = repository.getDefaultTable();
-		int status = 0;
-		//System.out.println("  contentType: " + contentType);
+	/*
+	 * private int extractContent(String domain, RecordId id, Record
+	 * existingRecord, Record record, String html) throws RecordException,
+	 * RepositoryException, InterruptedException, IndexerException { LTable table
+	 * = repository.getDefaultTable(); int status = 0;
+	 * //System.out.println("  contentType: " + contentType);
+	 * 
+	 * //System.out.println("  charset: " + charset); WebScraper webScraper; if
+	 * (domain.contains(WebScraper.FAZ)) webScraper =
+	 * WebScraper.createInstance(WebScraper.FAZ, html); else webScraper =
+	 * WebScraper.createInstance(WebScraper.DER_STANDARD, html); List<String>
+	 * fieldNames = webScraper.getFieldNames();
+	 * 
+	 * for (String fieldName : fieldNames) { Object fieldValue =
+	 * webScraper.getValue(fieldName); if (fieldValue != null) {
+	 * //System.out.println("  " + fieldName + ": " + fieldValue);
+	 * record.setField(q(fieldName), fieldValue); if
+	 * (fieldName.equals(WebScraper.ARTICLE_BODY)) { if (existingRecord != null &&
+	 * existingRecord.hasField(q(WebScraper.ARTICLE_BODY))) { String
+	 * existingArticleBody = (String)
+	 * existingRecord.getField(q(WebScraper.ARTICLE_BODY)); if
+	 * (fieldValue.equals(existingArticleBody)) {
+	 * System.out.println("  Article body is equivalent!"); if
+	 * (webScraper.getFieldNames().contains(WebScraper.POSTINGS)) { Object
+	 * postings = webScraper.getValue(WebScraper.POSTINGS); if (postings != null)
+	 * { Record postingsRecord = table.newRecord(id);
+	 * postingsRecord.setField(q(WebScraper.POSTINGS), postings);
+	 * table.update(postingsRecord); Indexer indexer = lilyClient.getIndexer();
+	 * indexer.index(table.getTableName(), postingsRecord.getId()); } } return 2;
+	 * } } status = 1; } } }
+	 * 
+	 * return status; }
+	 */
 
-		//System.out.println("  charset: " + charset);
-		WebScraper webScraper;
-		if (domain.contains(WebScraper.FAZ))
-			webScraper = WebScraper.createInstance(WebScraper.FAZ, html);
-		else
-			webScraper = WebScraper.createInstance(WebScraper.DER_STANDARD, html);
-		List<String> fieldNames = webScraper.getFieldNames();
-
-		for (String fieldName : fieldNames) {
-			Object fieldValue = webScraper.getValue(fieldName);
-			if (fieldValue != null) {
-				//System.out.println("  " + fieldName + ": " + fieldValue);
-				record.setField(q(fieldName), fieldValue);
-				if (fieldName.equals(WebScraper.ARTICLE_BODY)) {
-					if (existingRecord != null && existingRecord.hasField(q(WebScraper.ARTICLE_BODY))) {
-						String existingArticleBody = (String) existingRecord.getField(q(WebScraper.ARTICLE_BODY));
-						if (fieldValue.equals(existingArticleBody)) {
-							System.out.println("  Article body is equivalent!");
-							if (webScraper.getFieldNames().contains(WebScraper.POSTINGS)) {
-								Object postings = webScraper.getValue(WebScraper.POSTINGS);
-								if (postings != null) {
-									Record postingsRecord = table.newRecord(id);
-									postingsRecord.setField(q(WebScraper.POSTINGS), postings);
-									table.update(postingsRecord);
-									Indexer indexer = lilyClient.getIndexer();
-									indexer.index(table.getTableName(), postingsRecord.getId());
-								}
-							}
-							return 2;
-						}
-					}
-					status = 1;
-				}
-			}
-		}
-
-		return status;
-	}
-
-	private static QName q(String name) {
-		return new QName("at.ac.ait", name);
-	}
+	//private static QName q(String name) {
+	//	return new QName("at.ac.ait", name);
+	//}
 
 	/**
-	 * Read the bytes of the record into a buffer and return the buffer. Give a size limit to the buffer to prevent from
-	 * exploding memory, but still read all the bytes from the stream even if the buffer is full. This way, the file
-	 * position will be advanced to the end of the record.
+	 * Read the bytes of the record into a buffer and return the buffer. Give a
+	 * size limit to the buffer to prevent from exploding memory, but still read
+	 * all the bytes from the stream even if the buffer is full. This way, the
+	 * file position will be advanced to the end of the record.
 	 */
-	private static byte[] readBytes(ArchiveRecord record, long contentLength, int sizeLimit) throws IOException {
+	private static byte[] readBytes(ArchiveRecord record, long contentLength,
+			int sizeLimit) throws IOException {
 		// Ensure the record does strict reading.
 		record.setStrict(true);
 
@@ -228,7 +285,8 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 		// read(byte[],offset,length) or read().
 		int pos = 0;
 		int c = 0;
-		while (((c = record.read(bytes, pos, (bytes.length - pos))) != -1) && pos < bytes.length) {
+		while (((c = record.read(bytes, pos, (bytes.length - pos))) != -1)
+				&& pos < bytes.length) {
 			pos += c;
 		}
 
@@ -245,8 +303,10 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 		// buffer, plus the count of extra stuff read after it should
 		// equal the contentLength passed into this function.
 		if (pos + count != contentLength) {
-			throw new IOException("Incorrect number of bytes read from ArchiveRecord: expected=" + contentLength
-					+ " bytes.length=" + bytes.length + " pos=" + pos + " count=" + count);
+			throw new IOException(
+					"Incorrect number of bytes read from ArchiveRecord: expected="
+							+ contentLength + " bytes.length=" + bytes.length + " pos=" + pos
+							+ " count=" + count);
 		}
 
 		return bytes;

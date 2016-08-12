@@ -17,7 +17,6 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
-import org.lilyproject.mapreduce.LilyMapReduceUtil;
 
 import java.io.IOException;
 
@@ -57,7 +56,7 @@ public class IngestJob extends Configured implements Tool {
 
         // Utility method will configure everything related to LilyInputFormat
         //LilyMapReduceUtil.initMapperJob(scan, zkConnectString, repository, job);
-        job.getConfiguration().set(LilyMapReduceUtil.ZK_CONNECT_STRING, zkConnectString);
+        //job.getConfiguration().set(LilyMapReduceUtil.ZK_CONNECT_STRING, zkConnectString);
         
         FileInputFormat.addInputPath(job, new Path("warcs"));
         
