@@ -1,9 +1,11 @@
 package org.eu.eark.etl.webscraping;
 
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
+import org.apache.log4j.Logger;
 import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
 import org.jsoup.nodes.Document;
@@ -23,34 +25,41 @@ public class DerStandardWebScraper extends WebScraper {
 	private String category;
 	private String headline;
 	private String author;
-	private DateTime datePublished;
+	//private DateTime datePublished;
+	private String datePublished;
 	private String articleBody;
-	private Integer postings;
+	private String postings;
+	
+	public SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	private Logger logger = Logger.getLogger(DerStandardWebScraper.class);
 
 	public DerStandardWebScraper(Document document) {
 		category = new SiteElement(document, CATEGORY_SELECTOR).categoryText();
 		headline = new SiteElement(document, HEADLINE_SELECTOR).text();
 		author = new SiteElement(document, AUTHOR_SELECTOR).text();
-		datePublished = new SiteElement(document, DATE_PUBLISHED_SELECTOR).textAsDateTime(DateTimeFormat.forPattern(
+		DateTime dTdatePublished = new SiteElement(document, DATE_PUBLISHED_SELECTOR).textAsDateTime(DateTimeFormat.forPattern(
 				"dd. MMMM yyyy, HH:mm").withLocale(Locale.forLanguageTag("de-AT")));
+		logger.info("WebScraper retrieved dtdatePlublished: "+dTdatePublished);
+		String datePublished = dTdatePublished == null ? "" : sdf.format(dTdatePublished.toDate());
+		
 		articleBody = new SiteElement(document, ARTICLE_BODY_SELECTOR).text();
 		String postingsStringOld = new SiteElement(document, POSTINGS_SELECTOR_OLD).ownText();
 		if (postingsStringOld != null) {
-			postings = 0;
+			postings = "";
 			if (postingsStringOld.contains(" Postings")) {
-				postings = Integer.parseInt(postingsStringOld.substring(0, postingsStringOld.indexOf(' ')));
+				postings = ""+Integer.parseInt(postingsStringOld.substring(0, postingsStringOld.indexOf(' ')));
 			} else if (postingsStringOld.contains("von ")) {
-				postings = Integer.parseInt(postingsStringOld.substring(postingsStringOld.indexOf("von ") + 4));
+				postings = ""+Integer.parseInt(postingsStringOld.substring(postingsStringOld.indexOf("von ") + 4));
 			}
 		} else {
 			String postingsString = new SiteElement(document, POSTINGS_SELECTOR).ownText();
 			if (postingsString != null)
-				postings = Integer.parseInt(postingsString.substring(1, postingsString.length()-1));
+				postings = ""+Integer.parseInt(postingsString.substring(1, postingsString.length()-1));
 		}
 	}
 
 	@Override
-	public Object getValue(String element) {
+	public String getValue(String element) {
 		switch (element) {
 		case CATEGORY:
 			return category;

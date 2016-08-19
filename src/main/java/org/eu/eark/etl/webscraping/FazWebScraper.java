@@ -1,5 +1,6 @@
 package org.eu.eark.etl.webscraping;
 
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.List;
 
@@ -20,8 +21,10 @@ public class FazWebScraper extends WebScraper {
 	private String category;
 	private String headline;
 	private String author;
-	private DateTime datePublished;
+	private String datePublished;
 	private String articleBody;
+	
+	public SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
 	public FazWebScraper(Document document) {
 		SiteElement siteElement = new SiteElement(document, CATEGORY_SELECTOR);
@@ -34,7 +37,8 @@ public class FazWebScraper extends WebScraper {
 		if (dateTimeString != null) {
 			dateTimeString = dateTimeString.replace(",", "");
 			try {
-				datePublished = DateTimeFormat.forPattern("dd.MM.yyyy").parseDateTime(dateTimeString);
+				DateTime dTdatePublished = DateTimeFormat.forPattern("dd.MM.yyyy").parseDateTime(dateTimeString);
+				datePublished = sdf.format(dTdatePublished.toDate());
 			} catch (IllegalArgumentException e) {
 				System.err.println("Problem while parsing DateTime: " + dateTimeString);
 			}
@@ -43,7 +47,7 @@ public class FazWebScraper extends WebScraper {
 	}
 
 	@Override
-	public Object getValue(String element) {
+	public String getValue(String element) {
 		switch (element) {
 		case CATEGORY:
 			return category;

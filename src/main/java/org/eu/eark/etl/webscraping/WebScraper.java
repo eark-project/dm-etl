@@ -31,7 +31,7 @@ public abstract class WebScraper {
 		}
 	}
 
-	public abstract Object getValue(String headline);
+	public abstract String getValue(String headline);
 
 	public abstract List<String> getFieldNames();
 
