@@ -1,0 +1,7 @@
+hbase-indexer add-indexer -n 1 -c /home/rainer/morphlines/morphlines-hbase-collection-news-mapper.xml -cp solr.zk=127.0.0.1/solr -cp solr.collection=hbase-collection-news
+
+hbase-indexer delete-indexer -n 1
+hbase-indexer list-indexers
+
+cat /var/log/hbase-solr/hbase-solr-hbase.out
+

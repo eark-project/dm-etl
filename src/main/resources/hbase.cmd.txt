@@ -1,0 +1,12 @@
+scan 'document_repository', { COLUMN => ['doc_colf:date', 'doc_colf:datePublished']}
+
+#you have to put size as int value so that it gets recognized by the indexer
+#data that has been added before the indexer was running is not regnized
+#data that is added using drop table -> create table is not recognized
+#put 'document_repository', 'myurl1', 'doc_colf:int_size', '1'
+#put 'document_repository', 'myurl1', 'doc_colf:size', '1'
+#put 'document_repository', 'myurl_withhex', 'doc_colf:int_size', "\x12"
+put 'document_repository', 'myurl_withhex', 'doc_colf:int_size', "\x00\x00\x00\x07"
+
+
+

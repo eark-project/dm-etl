@@ -1,0 +1,9 @@
+solrctl instancedir --generate $HOME/solr_configs2
+solrctl instancedir --create hbase-collection-news hbase-collection-news/
+solrctl instancedir --update hbase-collection-news ./hbase-collection-new
+solrctl instancedir --delete hbase-collection-news/
+
+solrctl collection --create collection2 -s 1 -c collection2
+solrctl collection --deletedocs hbase-collection-news
+solrctl collection --create hbase-collection-news
+solrctl collection --delete hbase-collection-news

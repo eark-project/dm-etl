@@ -35,7 +35,7 @@
        that you fully re-index after changing this setting as it can
        affect both how text is indexed and queried.
   -->
-  <luceneMatchVersion>4.9</luceneMatchVersion>
+  <luceneMatchVersion>4.10.3</luceneMatchVersion>
 
   <!-- <lib/> directives can be used to instruct Solr to load an Jars
        identified and use them to resolve any "plugins" specified in
@@ -116,23 +116,28 @@
        solr.RAMDirectoryFactory is memory based, not
        persistent, and doesn't work with replication.
     -->
-  <directoryFactory name="DirectoryFactory" 
-                    class="${solr.directoryFactory:solr.NRTCachingDirectoryFactory}">
-    
-         
-    <!-- These will be used if you are using the solr.HdfsDirectoryFactory,
-         otherwise they will be ignored. If you don't plan on using hdfs,
-         you can safely remove this section. -->      
-    <!-- The root directory that collection data should be written to. -->     
+  <directoryFactory name="DirectoryFactory" class="${solr.directoryFactory:org.apache.solr.core.HdfsDirectoryFactory}">
     <str name="solr.hdfs.home">${solr.hdfs.home:}</str>
-    <!-- The hadoop configuration files to use for the hdfs client. -->    
     <str name="solr.hdfs.confdir">${solr.hdfs.confdir:}</str>
-    <!-- Enable/Disable the hdfs cache. -->    
-    <str name="solr.hdfs.blockcache.enabled">${solr.hdfs.blockcache.enabled:true}</str>
+    <str name="solr.hdfs.security.kerberos.enabled">${solr.hdfs.security.kerberos.enabled:false}</str>
+    <str name="solr.hdfs.security.kerberos.keytabfile">${solr.hdfs.security.kerberos.keytabfile:}</str>
+    <str name="solr.hdfs.security.kerberos.principal">${solr.hdfs.security.kerberos.principal:}</str>
+    <bool name="solr.hdfs.blockcache.enabled">${solr.hdfs.blockcache.enabled:true}</bool>
     <!-- Enable/Disable using one global cache for all SolrCores. 
-         The settings used will be from the first HdfsDirectoryFactory created. -->    
+    The settings used will be from the first HdfsDirectoryFactory created. -->    
     <str name="solr.hdfs.blockcache.global">${solr.hdfs.blockcache.global:true}</str>
-    
+    <int name="solr.hdfs.blockcache.slab.count">${solr.hdfs.blockcache.slab.count:1}</int>
+    <bool name="solr.hdfs.blockcache.direct.memory.allocation">${solr.hdfs.blockcache.direct.memory.allocation:true}</bool>
+    <int name="solr.hdfs.blockcache.blocksperbank">${solr.hdfs.blockcache.blocksperbank:16384}</int> 
+    <bool name="solr.hdfs.blockcache.read.enabled">${solr.hdfs.blockcache.read.enabled:true}</bool>
+    <bool name="solr.hdfs.blockcache.write.enabled">${solr.hdfs.blockcache.write.enabled:false}</bool>
+    <!-- the buffercount is actually the total size in bytes to used for buffer caching -->    
+    <int name="solr.hdfs.blockcache.bufferstore.buffercount">${solr.hdfs.blockcache.bufferstore.buffercount:0}</int> 
+    <bool name="solr.hdfs.nrtcachingdirectory.enable">${solr.hdfs.nrtcachingdirectory.enable:true}</bool>
+    <int name="solr.hdfs.nrtcachingdirectory.maxmergesizemb">${solr.hdfs.nrtcachingdirectory.maxmergesizemb:16}</int>
+    <int name="solr.hdfs.nrtcachingdirectory.maxcachedmb">${solr.hdfs.nrtcachingdirectory.maxcachedmb:192}</int>
+    <!-- HDFS Block Locality Reporter can be toggled on and off -->
+    <bool name="solr.hdfs.locality.metrics.enabled">${solr.hdfs.locality.metrics.enabled:false}</bool>
   </directoryFactory> 
 
   <!-- The CodecFactory for defining the format of the inverted index.
@@ -187,7 +192,7 @@
          indexing documents at once in IndexWriter; if more than this
          many threads arrive they will wait for others to finish.
          Default in Solr/Lucene is 8. -->
-    <!-- <maxIndexingThreads>8</maxIndexingThreads>  -->
+         <maxIndexingThreads>${solr.maxIndexingThreads:8}</maxIndexingThreads>
 
     <!-- Expert: Enabling compound file will use less files for the index, 
          using fewer file descriptors on the expense of performance decrease. 
@@ -200,9 +205,8 @@
          maxBufferedDocs sets a limit on the number of documents buffered
          before flushing.
          If both ramBufferSizeMB and maxBufferedDocs is set, then
-         Lucene will flush based on whichever limit is hit first.
-         The default is 100 MB.  -->
-    <!-- <ramBufferSizeMB>100</ramBufferSizeMB> -->
+         Lucene will flush based on whichever limit is hit first.  -->
+         <ramBufferSizeMB>128</ramBufferSizeMB> 
     <!-- <maxBufferedDocs>1000</maxBufferedDocs> -->
 
     <!-- Expert: Merge Policy 
@@ -259,7 +263,7 @@
          More details on the nuances of each LockFactory...
          http://wiki.apache.org/lucene-java/AvailableLockFactories
     -->
-    <lockType>${solr.lock.type:native}</lockType>
+      <lockType>${solr.lock.type:hdfs}</lockType>
 
     <!-- Unlock On Startup
 
@@ -279,13 +283,11 @@
       -->
     <!-- <termIndexInterval>128</termIndexInterval> -->
 
-    <!-- If true, IndexReaders will be opened/reopened from the IndexWriter
-         instead of from the Directory. Hosts in a master/slave setup
-         should have this set to false while those in a SolrCloud
-         cluster need to be set to true. Default: true
+    <!-- If true, IndexReaders will be reopened (often more efficient)
+         instead of closed and then opened. Default: true
       -->
     <!-- 
-    <nrtMode>true</nrtMode>
+    <reopenReaders>true</reopenReaders>
       -->
 
     <!-- Commit Deletion Policy
@@ -328,13 +330,6 @@
          this is enabled here, and controlled through log4j.properties.
       -->
      <infoStream>true</infoStream>
-    
-    <!--
-        Use true to enable this safety check, which can help
-        reduce the risk of propagating index corruption from older segments 
-        into new ones, at the expense of slower merging.
-    -->
-     <checkIntegrityAtMerge>false</checkIntegrityAtMerge>
   </indexConfig>
 
 
@@ -367,6 +362,7 @@
                 solr data directory.  --> 
     <updateLog>
       <str name="dir">${solr.ulog.dir:}</str>
+      <int name="tlogDfsReplication">${solr.ulog.tlogDfsReplication:3}</int>
     </updateLog>
  
     <!-- AutoCommit
@@ -391,19 +387,19 @@
          have some sort of hard autoCommit to limit the log size.
       -->
      <autoCommit> 
-       <maxTime>${solr.autoCommit.maxTime:5000}</maxTime> 
-       <openSearcher>true</openSearcher> 
+       <maxTime>${solr.autoCommit.maxTime:60000}</maxTime> 
+       <openSearcher>false</openSearcher> 
      </autoCommit>
 
     <!-- softAutoCommit is like autoCommit except it causes a
          'soft' commit which only ensures that changes are visible
          but does not ensure that data is synced to disk.  This is
          faster and more near-realtime friendly than a hard commit.
-      -->
-
+      -->   
      <autoSoftCommit> 
-       <maxTime>${solr.autoSoftCommit.maxTime:-1}</maxTime> 
+       <maxTime>${solr.autoSoftCommit.maxTime:15000}</maxTime> 
      </autoSoftCommit>
+     
 
     <!-- Update Related Event Listeners
          
@@ -553,14 +549,6 @@
                    initialSize="512"
                    autowarmCount="0"/>
     
-    <!-- custom cache currently used by block join --> 
-    <cache name="perSegFilter"
-      class="solr.search.LRUCache"
-      size="10"
-      initialSize="0"
-      autowarmCount="10"
-      regenerator="solr.NoOpRegenerator" />
-
     <!-- Field Value Cache
          
          Cache used to hold field values that are quickly accessible
@@ -690,7 +678,7 @@
          Recommend values of 1-2 for read-only slaves, higher for
          masters w/o cache warming.
       -->
-    <maxWarmingSearchers>2</maxWarmingSearchers>
+    <maxWarmingSearchers>4</maxWarmingSearchers>
 
   </query>
 
@@ -748,7 +736,7 @@
     <requestParsers enableRemoteStreaming="true" 
                     multipartUploadLimitInKB="2048000"
                     formdataUploadLimitInKB="2048"
-                    addHttpRequestToContext="false"/>
+                    addHttpRequestToContext="true"/>
 
     <!-- HTTP Caching
 
@@ -840,7 +828,7 @@
      <lst name="defaults">
        <str name="echoParams">explicit</str>
        <int name="rows">10</int>
-       <str name="df">body</str>
+       <str name="df">text</str>
      </lst>
     <!-- In addition to defaults, "appends" params can be specified
          to identify values which should be appended to the list of
@@ -894,6 +882,11 @@
          <str>nameOfCustomComponent2</str>
        </arr>
       -->
+      <arr name="first-components">
+        <str>queryIndexAuthorization</str>
+        <str>queryDocAuthorization</str>
+      </arr>
+
     </requestHandler>
 
   <!-- A request handler that returns indented JSON by default -->
@@ -902,28 +895,28 @@
        <str name="echoParams">explicit</str>
        <str name="wt">json</str>
        <str name="indent">true</str>
-       <str name="df">body</str>
+       <str name="df">text</str>
      </lst>
+     <arr name="first-components">
+        <str>queryIndexAuthorization</str>
+        <str>queryDocAuthorization</str>
+      </arr>
   </requestHandler>
 
 
   <!-- realtime get handler, guaranteed to return the latest stored fields of
        any document, without the need to commit or open a new searcher.  The
-       current implementation relies on the updateLog feature being enabled.
-
-       ** WARNING **
-       Do NOT disable the realtime get handler at /get if you are using
-       SolrCloud otherwise any leader election will cause a full sync in ALL
-       replicas for the shard in question. Similarly, a replica recovery will
-       also always fetch the complete index from the leader because a partial
-       sync will not be possible in the absence of this handler.
-  -->
-  <requestHandler name="/get" class="solr.RealTimeGetHandler">
+       current implementation relies on the updateLog feature being enabled. -->
+  <requestHandler name="/get" class="solr.SecureRealTimeGetHandler">
      <lst name="defaults">
        <str name="omitHeader">true</str>
        <str name="wt">json</str>
        <str name="indent">true</str>
      </lst>
+     <arr name="first-components">
+        <str>queryIndexAuthorization</str>
+        <str>queryDocAuthorization</str>
+     </arr>
   </requestHandler>
 
  
@@ -1018,6 +1011,11 @@
        <str name="spellcheck.maxCollations">3</str>           
      </lst>
 
+      <arr name="first-components">
+        <str>queryIndexAuthorization</str>
+        <str>queryDocAuthorization</str>
+      </arr>
+
      <!-- append spellchecking to our list of components -->
      <arr name="last-components">
        <str>spellcheck</str>
@@ -1048,42 +1046,32 @@
          updateRequestProcessorChains that can be used by name 
          on each Update Request
       -->
-    <!--
-       <lst name="defaults">
-         <str name="update.chain">dedupe</str>
+    
+       <lst name="invariants">
+         <str name="update.chain">updateIndexAuthorization</str>
        </lst>
-       -->
+       
+
   </requestHandler>
 
   <!-- for back compat with clients using /update/json and /update/csv -->  
-  <requestHandler name="/update/json" class="solr.UpdateRequestHandler">
+  <requestHandler name="/update/json" class="solr.JsonUpdateRequestHandler">
         <lst name="defaults">
          <str name="stream.contentType">application/json</str>
        </lst>
+       <lst name="invariants">
+         <str name="update.chain">updateIndexAuthorization</str>
+       </lst>
+
   </requestHandler>
-  <requestHandler name="/update/csv" class="solr.UpdateRequestHandler">
+  <requestHandler name="/update/csv" class="solr.CSVRequestHandler">
         <lst name="defaults">
          <str name="stream.contentType">application/csv</str>
        </lst>
-  </requestHandler>
+       <lst name="invariants">
+         <str name="update.chain">updateIndexAuthorization</str>
+       </lst>
 
-  <!-- Solr Cell Update Request Handler
-
-       http://wiki.apache.org/solr/ExtractingRequestHandler 
-
-    -->
-  <requestHandler name="/update/extract" 
-                  startup="lazy"
-                  class="solr.extraction.ExtractingRequestHandler" >
-    <lst name="defaults">
-      <str name="lowernames">true</str>
-      <str name="uprefix">ignored_</str>
-
-      <!-- capture link hrefs but ignore div attributes -->
-      <str name="captureAttr">true</str>
-      <str name="fmap.a">links</str>
-      <str name="fmap.div">ignored_</str>
-    </lst>
   </requestHandler>
 
 
@@ -1107,7 +1095,7 @@
    -->
   <requestHandler name="/analysis/field" 
                   startup="lazy"
-                  class="solr.FieldAnalysisRequestHandler" />
+                  class="solr.SecureFieldAnalysisRequestHandler" />
 
 
   <!-- Document Analysis Handler
@@ -1141,7 +1129,7 @@
     as a "match". 
   -->
   <requestHandler name="/analysis/document" 
-                  class="solr.DocumentAnalysisRequestHandler" 
+                  class="solr.SecureDocumentAnalysisRequestHandler" 
                   startup="lazy" />
 
   <!-- Admin Handlers
@@ -1150,7 +1138,7 @@
        RequestHandlers.  
     -->
   <requestHandler name="/admin/" 
-                  class="solr.admin.AdminHandlers" />
+                  class="solr.admin.SecureAdminHandlers" />
   <!-- This single handler is equivalent to the following... -->
   <!--
      <requestHandler name="/admin/luke"       class="solr.admin.LukeRequestHandler" />
@@ -1161,9 +1149,7 @@
      <requestHandler name="/admin/file"       class="solr.admin.ShowFileRequestHandler" >
     -->
   <!-- If you wish to hide files under ${solr.home}/conf, explicitly
-       register the ShowFileRequestHandler using the definition below. 
-       NOTE: The glob pattern ('*') is the only pattern supported at present, *.xml will
-             not exclude all files ending in '.xml'. Use it to exclude _all_ updates
+       register the ShowFileRequestHandler using: 
     -->
   <!--
      <requestHandler name="/admin/file" 
@@ -1171,7 +1157,6 @@
        <lst name="invariants">
          <str name="hidden">synonyms.txt</str> 
          <str name="hidden">anotherfile.txt</str> 
-         <str name="hidden">*</str> 
        </lst>
      </requestHandler>
     -->
@@ -1213,7 +1198,7 @@
 
        https://wiki.apache.org/solr/SolrCloud/
     -->
-  <requestHandler name="/replication" class="solr.ReplicationHandler" > 
+  <requestHandler name="/replication" class="solr.SecureReplicationHandler" > 
     <!--
        To enable simple master/slave replication, uncomment one of the 
        sections below, depending on whether this solr instance should be
@@ -1313,7 +1298,7 @@
       <!-- maximum threshold of documents a query term can appear to be considered for correction -->
       <float name="maxQueryFrequency">0.01</float>
       <!-- uncomment this to require suggestions to occur in 1% of the documents
-      	<float name="thresholdTokenFrequency">.01</float>
+      <float name="thresholdTokenFrequency">.01</float>
       -->
     </lst>
     
@@ -1365,7 +1350,25 @@
        </lst>
       -->
   </searchComponent>
-  
+
+  <searchComponent name="queryIndexAuthorization" class="org.apache.solr.handler.component.QueryIndexAuthorizationComponent" >
+  </searchComponent>
+
+  <searchComponent name="queryDocAuthorization" class="org.apache.solr.handler.component.QueryDocAuthorizationComponent" >
+    <!-- Set to true to enabled document-level authorization -->
+    <bool name="enabled">false</bool>
+
+    <!-- Field where the auth tokens are stored in the document -->
+    <str name="sentryAuthField">sentry_auth</str>
+
+    <!-- Auth token defined to allow any role to access the document.
+         Uncomment to enable. -->
+    <!--<str name="allRolesToken">*</str>-->
+  </searchComponent>
+
+  <searchComponent name="secureGet" class="org.apache.solr.handler.component.SecureRealTimeGetComponent" >
+  </searchComponent>
+
   <!-- A request handler for demonstrating the spellcheck component.  
 
        NOTE: This is purely as an example.  The whole purpose of the
@@ -1403,26 +1406,6 @@
     </arr>
   </requestHandler>
 
-  <searchComponent name="suggest" class="solr.SuggestComponent">
-  	<lst name="suggester">
-      <str name="name">mySuggester</str>
-      <str name="lookupImpl">FuzzyLookupFactory</str>      <!-- org.apache.solr.spelling.suggest.fst -->
-      <str name="dictionaryImpl">DocumentDictionaryFactory</str>     <!-- org.apache.solr.spelling.suggest.HighFrequencyDictionaryFactory --> 
-      <str name="field">cat</str>
-      <str name="weightField">price</str>
-      <str name="suggestAnalyzerFieldType">string</str>
-    </lst>
-  </searchComponent>
-
-  <requestHandler name="/suggest" class="solr.SearchHandler" startup="lazy">
-    <lst name="defaults">
-      <str name="suggest">true</str>
-      <str name="suggest.count">10</str>
-    </lst>
-    <arr name="components">
-      <str>suggest</str>
-    </arr>
-  </requestHandler>
   <!-- Term Vector Component
 
        http://wiki.apache.org/solr/TermVectorComponent
@@ -1441,6 +1424,10 @@
       <str name="df">text</str>
       <bool name="tv">true</bool>
     </lst>
+    <arr name="first-components">
+      <str>queryIndexAuthorization</str>
+      <str>queryDocAuthorization</str>
+    </arr>
     <arr name="last-components">
       <str>tvComponent</str>
     </arr>
@@ -1448,59 +1435,69 @@
 
   <!-- Clustering Component
 
+       http://wiki.apache.org/solr/ClusteringComponent
+
        You'll need to set the solr.clustering.enabled system property
        when running solr to run with clustering enabled:
 
             java -Dsolr.clustering.enabled=true -jar start.jar
 
-       http://wiki.apache.org/solr/ClusteringComponent
-       http://carrot2.github.io/solr-integration-strategies/
     -->
   <searchComponent name="clustering"
                    enable="${solr.clustering.enabled:false}"
                    class="solr.clustering.ClusteringComponent" >
+    <!-- Declare an engine -->
     <lst name="engine">
-      <str name="name">lingo</str>
+      <!-- The name, only one can be named "default" -->
+      <str name="name">default</str>
 
-      <!-- Class name of a clustering algorithm compatible with the Carrot2 framework.
+      <!-- Class name of Carrot2 clustering algorithm.
 
-           Currently available open source algorithms are:
+           Currently available algorithms are:
+           
            * org.carrot2.clustering.lingo.LingoClusteringAlgorithm
            * org.carrot2.clustering.stc.STCClusteringAlgorithm
            * org.carrot2.clustering.kmeans.BisectingKMeansClusteringAlgorithm
-
-           See http://project.carrot2.org/algorithms.html for more information.
-
-           A commercial algorithm Lingo3G (needs to be installed separately) is defined as:
-           * com.carrotsearch.lingo3g.Lingo3GClusteringAlgorithm
+           
+           See http://project.carrot2.org/algorithms.html for the
+           algorithm's characteristics.
         -->
       <str name="carrot.algorithm">org.carrot2.clustering.lingo.LingoClusteringAlgorithm</str>
 
-      <!-- Override location of the clustering algorithm's resources 
-           (attribute definitions and lexical resources).
+      <!-- Overriding values for Carrot2 default algorithm attributes.
 
-           A directory from which to load algorithm-specific stop words,
-           stop labels and attribute definition XMLs. 
+           For a description of all available attributes, see:
+           http://download.carrot2.org/stable/manual/#chapter.components.
+           Use attribute key as name attribute of str elements
+           below. These can be further overridden for individual
+           requests by specifying attribute key as request parameter
+           name and attribute value as parameter value.
+        -->
+      <str name="LingoClusteringAlgorithm.desiredClusterCountBase">20</str>
+
+      <!-- Location of Carrot2 lexical resources.
+
+           A directory from which to load Carrot2-specific stop words
+           and stop labels. Absolute or relative to Solr config directory.
+           If a specific resource (e.g. stopwords.en) is present in the
+           specified dir, it will completely override the corresponding
+           default one that ships with Carrot2.
 
            For an overview of Carrot2 lexical resources, see:
            http://download.carrot2.org/head/manual/#chapter.lexical-resources
+        -->
+      <str name="carrot.lexicalResourcesDir">clustering/carrot2</str>
 
-           For an overview of Lingo3G lexical resources, see:
-           http://download.carrotsearch.com/lingo3g/manual/#chapter.lexical-resources
+      <!-- The language to assume for the documents.
+
+           For a list of allowed values, see:
+           http://download.carrot2.org/stable/manual/#section.attribute.lingo.MultilingualClustering.defaultLanguage
        -->
-      <str name="carrot.resourcesDir">clustering/carrot2</str>
+      <str name="MultilingualClustering.defaultLanguage">ENGLISH</str>
     </lst>
-
-    <!-- An example definition for the STC clustering algorithm. -->
     <lst name="engine">
       <str name="name">stc</str>
       <str name="carrot.algorithm">org.carrot2.clustering.stc.STCClusteringAlgorithm</str>
-    </lst>
-
-    <!-- An example definition for the bisecting kmeans clustering algorithm. -->
-    <lst name="engine">
-      <str name="name">kmeans</str>
-      <str name="carrot.algorithm">org.carrot2.clustering.kmeans.BisectingKMeansClusteringAlgorithm</str>
     </lst>
   </searchComponent>
 
@@ -1517,29 +1514,32 @@
                   class="solr.SearchHandler">
     <lst name="defaults">
       <bool name="clustering">true</bool>
+      <str name="clustering.engine">default</str>
       <bool name="clustering.results">true</bool>
-      <!-- Field name with the logical "title" of a each document (optional) -->
-      <str name="carrot.title">body</str>
-      <!-- Field name with the logical "URL" of a each document (optional) -->
-      <str name="carrot.url">url</str>
-      <!-- Field name with the logical "content" of a each document (optional) -->
-      <!-- str name="carrot.snippet">body</str -->
-      <!-- Apply highlighter to the title/ content and use this for clustering. -->
-      <bool name="carrot.produceSummary">true</bool>
-      <!-- the maximum number of labels per cluster -->
-      <!--<int name="carrot.numDescriptions">5</int>-->
-      <!-- produce sub clusters -->
-      <bool name="carrot.outputSubClusters">false</bool>
-
-      <!-- Configure the remaining request handler parameters. -->
-      <str name="defType">edismax</str>
-      <str name="qf">
-        url^2.0 body^1.0
-      </str>
-      <str name="q.alt">*:*</str>
-      <str name="rows">10</str>
-      <str name="fl">*,score</str>
-    </lst>
+      <!-- The title field -->
+      <str name="carrot.title">name</str>
+      <str name="carrot.url">id</str>
+      <!-- The field to cluster on -->
+       <str name="carrot.snippet">features</str>
+       <!-- produce summaries -->
+       <bool name="carrot.produceSummary">true</bool>
+       <!-- the maximum number of labels per cluster -->
+       <!--<int name="carrot.numDescriptions">5</int>-->
+       <!-- produce sub clusters -->
+       <bool name="carrot.outputSubClusters">false</bool>
+       
+       <str name="defType">edismax</str>
+       <str name="qf">
+         text^0.5 features^1.0 name^1.2 sku^1.5 id^10.0 manu^1.1 cat^1.4
+       </str>
+       <str name="q.alt">*:*</str>
+       <str name="rows">10</str>
+       <str name="fl">*,score</str>
+    </lst>     
+    <arr name="first-components">
+      <str>queryIndexAuthorization</str>
+      <str>queryDocAuthorization</str>
+    </arr>
     <arr name="last-components">
       <str>clustering</str>
     </arr>
@@ -1559,8 +1559,10 @@
      <lst name="defaults">
       <bool name="terms">true</bool>
       <bool name="distrib">false</bool>
-    </lst>     
+    </lst>
     <arr name="components">
+      <str>queryIndexAuthorization</str>
+      <str>queryDocAuthorization</str>
       <str>terms</str>
     </arr>
   </requestHandler>
@@ -1586,6 +1588,10 @@
       <str name="echoParams">explicit</str>
       <str name="df">text</str>
     </lst>
+    <arr name="first-components">
+      <str>queryIndexAuthorization</str>
+      <str>queryDocAuthorization</str>
+    </arr>
     <arr name="last-components">
       <str>elevator</str>
     </arr>
@@ -1768,7 +1774,13 @@
       <processor class="solr.RunUpdateProcessorFactory" />
     </updateRequestProcessorChain>
   -->
- 
+    <updateRequestProcessorChain name="updateIndexAuthorization">
+      <processor class="solr.UpdateIndexAuthorizationProcessorFactory" />
+      <processor class="solr.LogUpdateProcessorFactory" />
+      <processor class="solr.DistributedUpdateProcessorFactory" />
+      <processor class="solr.RunUpdateProcessorFactory" />
+    </updateRequestProcessorChain> 
+
   <!-- Response Writers
 
        http://wiki.apache.org/solr/QueryResponseWriter

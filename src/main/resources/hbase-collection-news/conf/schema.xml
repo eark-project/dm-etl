@@ -94,14 +94,10 @@
    <!-- The _version_ field is required when using the Solr update log or SolrCloud (cfr. SOLR-3432) -->
    <field name="_version_" type="long" indexed="true" stored="true"/>
 
-   <field name="lily.key" type="string" indexed="true" stored="true" required="true"/>
-   <field name="lily.id" type="string" indexed="true" stored="true" required="true"/>
-   <field name="lily.table" type="string" indexed="true" stored="true" required="true"/>
-   <field name="lily.vtagId" type="string" indexed="true" stored="true"/>
-   <field name="lily.vtag" type="string" indexed="true" stored="true"/>
-   <field name="lily.version" type="long" indexed="true" stored="true"/>
-
+   <!-- in present implementation the row (put) is constructued with the url as id -->
+   <field name="id" type="text_general" indexed="true" stored="true" required="true"/>
    <field name="url" type="text_de" indexed="true" stored="true" required="false"/>
+   <field name="recordType" type="text_general" indexed="true" stored="true" required="false"/>
    <field name="date" type="date" indexed="true" stored="true" required="false"/>
    <field name="contentType" type="text_general" indexed="true" stored="true" required="false"/>
    <field name="size" type="int" indexed="true" stored="true" required="false"/>
@@ -114,6 +110,6 @@
    <field name="body" type="text_general" indexed="true" stored="true" required="false"/>
  </fields>
 
- <uniqueKey>lily.key</uniqueKey>
+ <uniqueKey>id</uniqueKey>
 
 </schema>

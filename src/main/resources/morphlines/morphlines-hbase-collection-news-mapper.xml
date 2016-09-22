@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<indexer table="document_repository"
+mapper="com.ngdata.hbaseindexer.morphline.MorphlineResultToSolrMapper">
+
+   <!--param name="morphlineFile" value="/etc/hbase-solr/conf/morphlines.conf"/-->
+   <param name="morphlineFile" value="/home/rainer/morphlines/morphlines-hbase-collection-news.conf"/>
+
+   <!-- The optional morphlineId identifies a morphline if there are multiple
+   morphlines in morphlines.conf -->
+   <!-- <param name="morphlineId" value="morphline1"/> -->
+
+</indexer>
