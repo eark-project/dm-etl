@@ -23,7 +23,8 @@ $(function() {
 });
 
 function callback(data) {
-  var lilyEndpoint = 'http://localhost:12060/repository/record/';
+  //var lilyEndpoint = 'http://localhost:12060/repository/record/';
+  var lilyEndpoint = 'http://earkdev.ait.ac.at:12060/repository/record/';
   var lilyNamespace = 'at.ac.ait';
   
   var results = data.response.numFound;
@@ -78,7 +79,8 @@ function callback(data) {
 }
 
 function askSolr(start) {
-  var solrEndpoint = 'http://localhost:8983/solr/collection1/';
+  //var solrEndpoint = 'http://localhost:8983/solr/collection1/';
+  var solrEndpoint = 'http://earkdev.ait.ac.at:8983/solr/news/';
   var queryString = document.forms.find.queryString.value;
   var blobQuery = '';
   if (queryString)

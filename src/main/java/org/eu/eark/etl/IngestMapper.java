@@ -49,11 +49,9 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 	public static final String REPOSITORY_TABLE_NAME = "document_repository";
 	public static final String CF_REPOSITORY = "doc_colf";
 	public static final String WEBSITE_TYPE = "website";
-	
-	private final int EMPTY_ARTICLE_BODY = 0;
-	private final int NEW_ARTICLE_BODY = 1;
-	private final int EXISTING_ARTICLE_BODY = 2;
 
+	private final int NEW_ARTICLE_BODY = 0;
+	private final int ARTICLE_BODY_ALREADY_EXISTING = -1;
 
 	protected Table table = null;
 
@@ -61,11 +59,11 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 
 	// contentType
 	public enum rField {
-		recordType, url, date, contentType, size, body
+		str_recordType, str_url, str_date, str_contentType, int_size, str_body
 	}
-	
+
 	public enum cField {
-		category, headline, author, datePublished, articleBody, postings
+		str_category, str_headline, str_author, str_datePublished, str_articleBody, int_postings
 	}
 
 	@Override
@@ -86,10 +84,19 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 		HTableDescriptor tableDsc = new HTableDescriptor(
 				TableName.valueOf(REPOSITORY_TABLE_NAME));
 		if (!admin.tableExists(tableDsc.getTableName())) {
-			tableDsc.addFamily(new HColumnDescriptor(CF_REPOSITORY)/*.setCompressionType(Algorithm.SNAPPY)*/);
+			tableDsc.addFamily(new HColumnDescriptor(CF_REPOSITORY)/*
+																															 * .setCompressionType
+																															 * (
+																															 * Algorithm.SNAPPY
+																															 * )
+																															 */);
 			admin.createTable(tableDsc);
 
 			for (rField field : rField.values()) {
+				createHBaseColumn(field.toString(), admin);
+			}
+
+			for (cField field : cField.values()) {
 				createHBaseColumn(field.toString(), admin);
 			}
 		}
@@ -177,8 +184,11 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 						}
 
 						Put put = new Put(Bytes.toBytes(id));
-						put.addColumn(Bytes.toBytes(CF_REPOSITORY), Bytes.toBytes(rField.recordType.toString()), Bytes.toBytes(WEBSITE_TYPE));
-						put.addColumn(Bytes.toBytes(CF_REPOSITORY), Bytes.toBytes(rField.url.toString()), Bytes.toBytes(url));
+						put.addColumn(Bytes.toBytes(CF_REPOSITORY),
+								Bytes.toBytes(rField.str_recordType.toString()),
+								Bytes.toBytes(WEBSITE_TYPE));
+						put.addColumn(Bytes.toBytes(CF_REPOSITORY),
+								Bytes.toBytes(rField.str_url.toString()), Bytes.toBytes(url));
 
 						// Record record = table.newRecord(id);
 						// record.setRecordType(q("Website"));
@@ -195,7 +205,7 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 						// TODO use a smarter serialization format like AVRO
 						// TODO use the Phoenix API
 						put.addColumn(Bytes.toBytes(CF_REPOSITORY),
-								Bytes.toBytes(rField.date.toString()),
+								Bytes.toBytes(rField.str_date.toString()),
 								Bytes.toBytes(sdf.format(date)));
 
 						// Parsing Content-Type
@@ -216,7 +226,7 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 						logger.info("ContentType: " + contentType);
 
 						put.addColumn(Bytes.toBytes(CF_REPOSITORY),
-								Bytes.toBytes(rField.contentType.toString()),
+								Bytes.toBytes(rField.str_contentType.toString()),
 								Bytes.toBytes(contentType));
 
 						// Parsing size
@@ -226,67 +236,84 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 						// about 2G
 						int sizeLimit = Integer.MAX_VALUE - 1024;
 						byte[] body = readBytes(warc, length, sizeLimit);
-						
-						logger.info("size of current record is: "+body.length);
-						//logger.info(" testing byte conversion "+Bytes.toString(Bytes.toBytes(body.length)) + " "+Bytes.toInt(Bytes.toBytes(body.length)));
+
+						logger.info("size of current warc record is: " + body.length);
+						// logger.info(" testing byte conversion "+Bytes.toString(Bytes.toBytes(body.length))
+						// + " "+Bytes.toInt(Bytes.toBytes(body.length)));
 
 						// size in bytes
 						put.addColumn(Bytes.toBytes(CF_REPOSITORY),
-								Bytes.toBytes(rField.size.toString()),
+								Bytes.toBytes(rField.int_size.toString()),
 								Bytes.toBytes(body.length));
 
 						// is this document already in the database?
 						if (!existingRecord.isEmpty()) {
 							byte[] dateVal = existingRecord.getValue(
 									Bytes.toBytes(CF_REPOSITORY),
-									Bytes.toBytes(rField.date.toString()));
+									Bytes.toBytes(rField.str_date.toString()));
 
 							Date existingDate = sdf.parse(Bytes.toString(dateVal));
+							logger.info("existing record crawled on date: " + existingDate);
 
-							// crawled at the same date
-							if (date.compareTo(existingDate) == 0)
-								createNewVersion = false;
+							// rawled at the same date
+							if (date.compareTo(existingDate) == 0) {
+								logger
+										.info("existing record has been craweld on same day as the actual one");
+								// createNewVersion = false;
+							}
 
 							byte[] sizeVal = existingRecord.getValue(
 									Bytes.toBytes(CF_REPOSITORY),
-									Bytes.toBytes(rField.size.toString()));
+									Bytes.toBytes(rField.int_size.toString()));
 							int existingSize = Bytes.toInt(sizeVal);
-							logger.info("Retrieving size from existing record: val="+existingSize);							
+							logger
+									.info("Retrieving warc record size from existing record: val="
+											+ existingSize);
 
 							// same content
-							if (body.length == existingSize)
-								createNewVersion = false;
-
-							if (contentType != null)
-								put.addColumn(Bytes.toBytes(CF_REPOSITORY),
-										Bytes.toBytes(rField.contentType.toString()),
-										Bytes.toBytes(contentType));
-
-							//ContentType: text/html; charset=utf-8
-							if (contentType.startsWith("text/html") && contentType.contains("=")) {
-								//extract charset
-								String charset = contentType.substring(contentType.indexOf('=') + 1);								
-								String domainName = url.split("/")[2];
-								String decodedBody = new String(body, charset);
-								
-								int status = extractContent(domainName, existingRecord, put, decodedBody);
-								if (status == NEW_ARTICLE_BODY)
-									createNewVersion = true;
-								else 
-									createNewVersion = false;
+							if (body.length == existingSize) {
+								logger
+										.info("existing record was of the same size as the actual one");
+								// createNewVersion = false;
 							}
+						}
+
+						if (contentType != null)
+							put.addColumn(Bytes.toBytes(CF_REPOSITORY),
+									Bytes.toBytes(rField.str_contentType.toString()),
+									Bytes.toBytes(contentType));
+
+						// ContentType: text/html; charset=utf-8
+						if (contentType.startsWith("text/html")
+								&& contentType.contains("=")) {
+							// extract charset
+							logger
+									.info("This is a text/html page. Extracting content from record...");
+							String charset = contentType
+									.substring(contentType.indexOf('=') + 1);
+							String domainName = url.split("/")[2];
+							String decodedBody = new String(body, charset);
+
+							int status = extractContent(domainName, existingRecord, put,
+									decodedBody);
+							if (status == ARTICLE_BODY_ALREADY_EXISTING)
+								createNewVersion = false;
+							else
+								createNewVersion = true;
 
 						}
 
-						logger.info("createNewVersion is "+createNewVersion);
-						
-						if (createNewVersion) { 
-							//enhance with compression and/or streaming data
-							put.addColumn(Bytes.toBytes(CF_REPOSITORY), Bytes.toBytes(rField.body.toString()), body);
+						logger.info("createNewVersion is " + createNewVersion);
+
+						//if (createNewVersion && body.length == 115998) {
+						if (createNewVersion) {
+							// enhance with compression and/or streaming data
+							put.addColumn(Bytes.toBytes(CF_REPOSITORY),
+									Bytes.toBytes(rField.str_body.toString()), body);
 							table.put(put);
 
-							//Indexer indexer = lilyClient.getIndexer();
-							//indexer.index(table.getTableName(), record.getId()); 
+							// Indexer indexer = lilyClient.getIndexer();
+							// indexer.index(table.getTableName(), record.getId());
 						}
 					}
 				}
@@ -296,109 +323,122 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 		}
 	}
 
-	/** prepares new record (put) and evaluates if article is already available
+	/**
+	 * prepares new record (put) and evaluates if article is already available
 	 * 
 	 * @return 0 if no articleBody was found 1 iff articleBody is new 2 iff
 	 *         articleBody isn't new
 	 */
 
-	private int extractContent(String domain, Result existingRecord,
-			Put put, String decodedBody) {
-				
-		//LTable table = repository.getDefaultTable();
+	private int extractContent(String domain, Result existingRecord, Put put,
+			String decodedBody) {
+
+		// LTable table = repository.getDefaultTable();
 		int status = NEW_ARTICLE_BODY;
 
 		// logger.info("  contentType: " + contentType);
 		// logger.info("  charset: " + charset); WebScraper webScraper;
-		
+
 		WebScraper webScraper = null;
 
 		if (domain.contains(WebScraper.FAZ))
 			webScraper = WebScraper.createInstance(WebScraper.FAZ, decodedBody);
 		else
-			webScraper = WebScraper.createInstance(WebScraper.DER_STANDARD, decodedBody);
-		
+			webScraper = WebScraper.createInstance(WebScraper.DER_STANDARD,
+					decodedBody);
+
 		List<String> fieldNames = webScraper.getFieldNames();
 
-		
 		for (String fieldName : fieldNames) {
 			String fieldValue = webScraper.getValue(fieldName);
 			if (fieldValue != null) {
 				logger.info("webScraper: " + fieldName + ": " + fieldValue);
-				//record.setField(q(fieldName), fieldValue);
-				//TODO is there a special treatment for postings required?
-				put.addColumn(Bytes.toBytes(CF_REPOSITORY),
-						Bytes.toBytes(cField.valueOf(fieldName).toString()),
-						Bytes.toBytes(fieldValue));
-				//check if this record already exists
-				if (fieldName.equals(WebScraper.ARTICLE_BODY) && !existingRecord.isEmpty()) {
+				// TODO is there a special treatment for updated number of postings required?
+				// check if this record already exists
+				if (fieldName.equals(cField.str_articleBody.toString())
+						&& !existingRecord.isEmpty()) {
 					byte[] existingBodyVal = existingRecord.getValue(
 							Bytes.toBytes(CF_REPOSITORY),
-							Bytes.toBytes(cField.articleBody.toString()));
-					logger.info("existingBody has length: "+ existingBodyVal.length);
-					if (existingBodyVal.length > 0) {
+							Bytes.toBytes(cField.str_articleBody.toString()));
+					if (existingBodyVal == null)
+						logger.info("existingBody has length: " + existingBodyVal);
+					else
+						logger.info("existingBody has length: " + existingBodyVal.length);
+					if (existingBodyVal != null && existingBodyVal.length > 0) {
 						String existingArticleBody = Bytes.toString(existingBodyVal);
 						if (fieldValue.equals(existingArticleBody)) {
 							logger.info("Existing article body is equal to current one!");
-							status = EXISTING_ARTICLE_BODY;
+							status = ARTICLE_BODY_ALREADY_EXISTING;
 						}
 					} else {
-						logger.info("Current article body is empty!");
-						status = EMPTY_ARTICLE_BODY;
+						logger.info("Existing article body is empty!");
 					}
-				} 
+				//typeCheck for number of Postings
+				} else if(fieldName.equals(cField.int_postings.toString())) {
+					try {
+						int nPostings = Integer.parseInt(fieldValue);
+					} catch (NumberFormatException e) {
+						logger.warn("Unable to convert number of postings to int. Received value: "+fieldValue+" Setting value to -1");
+						fieldValue = "-1";
+					}
+				}				
+				put.addColumn(Bytes.toBytes(CF_REPOSITORY),
+						Bytes.toBytes(cField.valueOf(fieldName).toString()),
+						Bytes.toBytes(fieldValue));
 			}
 		}
 		return status;
 	}
-					
-	
+
 	/*
-private int extractContent(String domain, RecordId id, Record existingRecord, Record record, String html)
-			throws RecordException, RepositoryException, InterruptedException, IndexerException {
-		LTable table = repository.getDefaultTable();
-		int status = 0;
-		//System.out.println("  contentType: " + contentType);
-
-		//System.out.println("  charset: " + charset);
-		WebScraper webScraper;
-		if (domain.contains(WebScraper.FAZ))
-			webScraper = WebScraper.createInstance(WebScraper.FAZ, html);
-		else
-			webScraper = WebScraper.createInstance(WebScraper.DER_STANDARD, html);
-		List<String> fieldNames = webScraper.getFieldNames();
-
-		for (String fieldName : fieldNames) {
-			Object fieldValue = webScraper.getValue(fieldName);
-			if (fieldValue != null) {
-				//System.out.println("  " + fieldName + ": " + fieldValue);
-				record.setField(q(fieldName), fieldValue);
-				if (fieldName.equals(WebScraper.ARTICLE_BODY)) {
-					if (existingRecord != null && existingRecord.hasField(q(WebScraper.ARTICLE_BODY))) {
-						String existingArticleBody = (String) existingRecord.getField(q(WebScraper.ARTICLE_BODY));
-						if (fieldValue.equals(existingArticleBody)) {
-							System.out.println("  Article body is equivalent!");
-							if (webScraper.getFieldNames().contains(WebScraper.POSTINGS)) {
-								Object postings = webScraper.getValue(WebScraper.POSTINGS);
-								if (postings != null) {
-									Record postingsRecord = table.newRecord(id);
-									postingsRecord.setField(q(WebScraper.POSTINGS), postings);
-									table.update(postingsRecord);
-									Indexer indexer = lilyClient.getIndexer();
-									indexer.index(table.getTableName(), postingsRecord.getId());
-								}
-							}
-							return 2;
-						}
-					}
-					status = 1;
-				}
-			}
-		}
-
-		return status;
-} 
-	 
+	 * private int extractContent(String domain, RecordId id, Record
+	 * existingRecord, Record record, String html)
+	 * throws RecordException, RepositoryException, InterruptedException,
+	 * IndexerException {
+	 * LTable table = repository.getDefaultTable();
+	 * int status = 0;
+	 * //System.out.println("  contentType: " + contentType);
+	 * 
+	 * //System.out.println("  charset: " + charset);
+	 * WebScraper webScraper;
+	 * if (domain.contains(WebScraper.FAZ))
+	 * webScraper = WebScraper.createInstance(WebScraper.FAZ, html);
+	 * else
+	 * webScraper = WebScraper.createInstance(WebScraper.DER_STANDARD, html);
+	 * List<String> fieldNames = webScraper.getFieldNames();
+	 * 
+	 * for (String fieldName : fieldNames) {
+	 * Object fieldValue = webScraper.getValue(fieldName);
+	 * if (fieldValue != null) {
+	 * //System.out.println("  " + fieldName + ": " + fieldValue);
+	 * record.setField(q(fieldName), fieldValue);
+	 * if (fieldName.equals(WebScraper.ARTICLE_BODY)) {
+	 * if (existingRecord != null &&
+	 * existingRecord.hasField(q(WebScraper.ARTICLE_BODY))) {
+	 * String existingArticleBody = (String)
+	 * existingRecord.getField(q(WebScraper.ARTICLE_BODY));
+	 * if (fieldValue.equals(existingArticleBody)) {
+	 * System.out.println("  Article body is equivalent!");
+	 * if (webScraper.getFieldNames().contains(WebScraper.POSTINGS)) {
+	 * Object postings = webScraper.getValue(WebScraper.POSTINGS);
+	 * if (postings != null) {
+	 * Record postingsRecord = table.newRecord(id);
+	 * postingsRecord.setField(q(WebScraper.POSTINGS), postings);
+	 * table.update(postingsRecord);
+	 * Indexer indexer = lilyClient.getIndexer();
+	 * indexer.index(table.getTableName(), postingsRecord.getId());
+	 * }
+	 * }
+	 * return 2;
+	 * }
+	 * }
+	 * status = 1;
+	 * }
+	 * }
+	 * }
+	 * 
+	 * return status;
+	 * }
 	 */
 
 	// private static QName q(String name) {

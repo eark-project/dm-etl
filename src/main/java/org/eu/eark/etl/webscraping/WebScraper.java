@@ -10,12 +10,12 @@ import org.jsoup.nodes.Document;
  */
 public abstract class WebScraper {
 
-	public static final String CATEGORY = "category";
-	public static final String HEADLINE = "headline";
-	public static final String AUTHOR = "author";
-	public static final String DATE_PUBLISHED = "datePublished";
-	public static final String ARTICLE_BODY = "articleBody";
-	public static final String POSTINGS = "postings";
+	public static final String CATEGORY = "str_category";
+	public static final String HEADLINE = "str_headline";
+	public static final String AUTHOR = "str_author";
+	public static final String DATE_PUBLISHED = "str_datePublished";
+	public static final String ARTICLE_BODY = "str_articleBody";
+	public static final String POSTINGS = "int_postings";
 	public static final String DER_STANDARD = "derstandard.at";
 	public static final String FAZ = "faz.net";
 
