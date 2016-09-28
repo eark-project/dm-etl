@@ -2,6 +2,7 @@ package org.eu.eark.etl.webscraping;
 
 import java.util.List;
 
+import org.joda.time.DateTime;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
@@ -31,7 +32,11 @@ public abstract class WebScraper {
 		}
 	}
 
-	public abstract String getValue(String headline);
+	public abstract Object getValue(String element);
+	
+	public abstract String getStringValue(String element);
+	
+	public abstract DateTime getDateValue(String element);
 
 	public abstract List<String> getFieldNames();
 

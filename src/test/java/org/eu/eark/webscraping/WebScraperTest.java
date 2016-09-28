@@ -3,7 +3,9 @@ package org.eu.eark.webscraping;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.eu.eark.etl.webscraping.DerStandardWebScraper;
@@ -32,21 +34,98 @@ public class WebScraperTest {
 	
 	@Parameters
 	public static List<Object[]> data() throws IOException {
-		Document derStandardDoc = Jsoup.connect("http://derstandard.at/2000003637703/Die-ZiB-zu-Mittag-schweigtHundepunks-nicht-im-Bild").get();
-		Document fazDoc = Jsoup.connect("http://www.faz.net/aktuell/feuilleton/kunstmarkt/raubgrabungen-die-wandernden-helme-aus-aragonien-13040696.html").get();
+		WebScraper derStandardScraper14 = getOldWebScraper(WebScraper.DER_STANDARD, "derStandard_201408.html");
+		WebScraper derStandardScraper16 = getOldWebScraper(WebScraper.DER_STANDARD, "derStandard_201609.html");
+		WebScraper fazScraper14 = getOldWebScraper(WebScraper.FAZ, "faz_201408.html");
+		WebScraper fazScraper16 = getOldWebScraper(WebScraper.FAZ, "faz_201609.html");
+		Document derStandardDoc = Jsoup.connect("http://derstandard.at/2000014628073/Kuenstler-als-Bodenbereiter-fuer-den-Fuehrerkult").get();
+		Document fazDoc = Jsoup.connect("http://www.faz.net/aktuell/politik/wahl-in-amerika/nach-der-tv-debatte-trump-plant-strategiewechsel-gegenueber-clinton-14457160.html").get();
 		WebScraper derStandardScraper = new DerStandardWebScraper(derStandardDoc);
 		WebScraper fazScraper = new FazWebScraper(fazDoc);
-		return Arrays.asList(new Object[][] { { derStandardScraper, WebScraper.CATEGORY, "Etat > TV > Fernsehkritik: TV-Tagebuch" },
-				{ derStandardScraper, WebScraper.HEADLINE, "Die \"ZiB\" zu Mittag schweigt: Hundepunks nicht im Bild" },
-				{ derStandardScraper, WebScraper.AUTHOR, "Christian Schachinger" },
-				{ derStandardScraper, WebScraper.DATE_PUBLISHED, new DateTime(2014, 7, 28, 17, 24, 0, 0) },
-				{ derStandardScraper, WebScraper.ARTICLE_BODY, "Facebook-Seite der \"ZiB\": " },
-				{ derStandardScraper, WebScraper.POSTINGS, null },
-				{ fazScraper, WebScraper.CATEGORY, "Feuilleton > Kunstmarkt" },
-				{ fazScraper, WebScraper.HEADLINE, "Raubgrabungen Die wandernden Helme aus Aragonien" },
-				{ fazScraper, WebScraper.AUTHOR, "Clementine Kügler, Madrid" },
-				{ fazScraper, WebScraper.DATE_PUBLISHED, new DateTime(2014, 7, 11, 0, 0, 0, 0) },
-				{ fazScraper, WebScraper.ARTICLE_BODY, "\u00a9 INTERFOTO Seit Jahren kommt es in Spanien zu Plünderungen archäologischer Funde." }});
+		Article s1 = new Article(
+			"Etat > TV > TV-Tagebuch",
+			"Die \"ZiB\" zu Mittag schweigt: Hundepunks nicht im Bild",
+			"Christian Schachinger",
+			new DateTime(2014, 7, 28, 17, 24, 0, 0),
+			"Facebook-Seite der \"ZiB\":",
+			"23");
+		Article s2 = new Article(
+			"Kultur > Bildende Kunst",
+			"Künstler als Bodenbereiter für den Führerkult",
+			"Alexander Kluy aus Frankfurt",
+			new DateTime(2015, 4, 21, 17, 53, 0, 0),
+			"Unter dem Titel",
+			"2");
+		// TODO: vergleiche mit altem Heritrix Crawl
+		Article f1 = new Article(
+			null, // mir fehlen zur Zeit akkurate Testdaten; web.archive.org hat anscheinend eine andere Version gecrawlt
+			"Raubgrabungen Die wandernden Helme aus Aragonien",
+			"Clementine Kügler, Madrid",
+			new DateTime(2014, 7, 11, 0, 0, 0, 0),
+			"\u00a9 INTERFOTO Seit Jahren kommt es in Spanien zu Plünderungen archäologischer Funde.");
+		Article f2 = new Article(
+			"Politik > Wahl in Amerika",
+			"Nach TV-Debatte mit Clinton Trump plant Strategiewechsel für die nächste Runde",
+			"Anna-Lena Ripperger",
+			new DateTime(2016, 9, 28, 0, 0, 0, 0),
+			"\u00a9 AFP In einem Interview");
+		List<Object[]> data = articleData(derStandardScraper14, s1);
+		data.addAll(articleData(derStandardScraper16, s2));
+		data.addAll(articleData(derStandardScraper, s2));
+		data.addAll(articleData(fazScraper14, f1));
+		data.addAll(articleData(fazScraper16, f2));
+		// TODO: vergleiche mit Heritrix Crawl
+		data.addAll(articleData(fazScraper, f2.withBody("$stleKurz To view this video")));
+		return data;
+	}
+	
+	private static List<Object[]> articleData(WebScraper s, Article a) {
+		List<Object[]> data = new ArrayList<>();
+		data.add(new Object[]{ s, WebScraper.CATEGORY, a.category });
+		data.add(new Object[]{ s, WebScraper.HEADLINE, a.headline });
+		data.add(new Object[]{ s, WebScraper.AUTHOR, a.author });
+		data.add(new Object[]{ s, WebScraper.DATE_PUBLISHED, a.datePublished });
+		data.add(new Object[]{ s, WebScraper.ARTICLE_BODY, a.articleBody });
+		if (a.postings != null) {
+			Object[] pData = { s, WebScraper.POSTINGS, a.postings };
+			data.add(pData);
+		}
+		return data;
+	}
+
+	public static class Article {
+		public String category;
+		public String headline;
+		public String author;
+		public DateTime datePublished;
+		public String articleBody;
+		public String postings;
+		public Article(String category, String headline, String author, DateTime datePublished, String articleBody) {
+			this.category = category;
+			this.headline = headline;
+			this.author = author;
+			this.datePublished = datePublished;
+			this.articleBody = articleBody;
+		}
+		public Article(String category, String headline, String author, DateTime datePublished, String articleBody, String postings) {
+			this.category = category;
+			this.headline = headline;
+			this.author = author;
+			this.datePublished = datePublished;
+			this.articleBody = articleBody;
+			this.postings = postings;
+		}
+		public Article withBody(String articleBody) {
+			return new Article(category, headline, author, datePublished, articleBody, postings);
+		}
+		public Article withPostings(String postings) {
+			return new Article(category, headline, author, datePublished, articleBody, postings);
+		}
+	}
+	
+	public static WebScraper getOldWebScraper(String type, String filename) throws IOException {
+		String resourceFilename = WebScraperTest.class.getResource("/" + filename).getFile();
+		return WebScraper.createInstance(type, new String(Files.readAllBytes(Paths.get(resourceFilename))));
 	}
 	
 	@Test

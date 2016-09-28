@@ -16,6 +16,13 @@ public class SiteElement {
 	public SiteElement(Document document, String cssSelector) {
 		elements = document.select(cssSelector);
 	}
+	
+	public SiteElement(Document document, String[] cssSelectors) {
+		for (String cssSelector : cssSelectors) {
+			elements = document.select(cssSelector);
+			if (!elements.isEmpty()) break;
+		}
+	}
 
 	public String text() {
 		if (getElements().isEmpty()) return null;
