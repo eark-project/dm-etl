@@ -56,26 +56,24 @@ public class WebScraperTest {
 			new DateTime(2015, 4, 21, 17, 53, 0, 0),
 			"Unter dem Titel",
 			"2");
-		// TODO: vergleiche mit altem Heritrix Crawl
 		Article f1 = new Article(
-			null, // mir fehlen zur Zeit akkurate Testdaten; web.archive.org hat anscheinend eine andere Version gecrawlt
+			"Feuilleton > Kunstmarkt",
 			"Raubgrabungen Die wandernden Helme aus Aragonien",
 			"Clementine Kügler, Madrid",
 			new DateTime(2014, 7, 11, 0, 0, 0, 0),
 			"\u00a9 INTERFOTO Seit Jahren kommt es in Spanien zu Plünderungen archäologischer Funde.");
 		Article f2 = new Article(
 			"Politik > Wahl in Amerika",
-			"Nach TV-Debatte mit Clinton Trump plant Strategiewechsel für die nächste Runde",
+			"Nach TV-Debatte mit Clinton Trump plant Strategiewechsel ",
 			"Anna-Lena Ripperger",
 			new DateTime(2016, 9, 28, 0, 0, 0, 0),
-			"\u00a9 AFP In einem Interview");
+			"$stleKurz To view this video");
 		List<Object[]> data = articleData(derStandardScraper14, s1);
 		data.addAll(articleData(derStandardScraper16, s2));
 		data.addAll(articleData(derStandardScraper, s2));
 		data.addAll(articleData(fazScraper14, f1));
 		data.addAll(articleData(fazScraper16, f2));
-		// TODO: vergleiche mit Heritrix Crawl
-		data.addAll(articleData(fazScraper, f2.withBody("$stleKurz To view this video")));
+		data.addAll(articleData(fazScraper, f2));
 		return data;
 	}
 	

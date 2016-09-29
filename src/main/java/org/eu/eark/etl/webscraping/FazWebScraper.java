@@ -16,7 +16,7 @@ public class FazWebScraper extends WebScraper {
 	private static final String ARTICLE_SELECTOR_1 = "*[itemtype=http://schema.org/Article]";
 	private static final String ARTICLE_SELECTOR_2 = "*[itemtype=http://schema.org/NewsArticle]";
 	private static final String[] CATEGORY_SELECTORS = {
-		"*[itemtype=http://schema.org/BreadcrumbList] *[itemprop=title]",
+		"*[itemtype=http://data-vocabulary.org/Breadcrumb] *[itemprop=title]",
 		"*[itemtype=http://schema.org/BreadcrumbList] ul *[itemprop=name]"};
 	private static final String[] HEADLINE_SELECTORS = {
 		ARTICLE_SELECTOR_1 + " *[itemprop=headline]",
