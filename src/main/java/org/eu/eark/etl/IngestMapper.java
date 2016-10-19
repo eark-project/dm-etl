@@ -54,7 +54,9 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 	private final int ARTICLE_BODY_ALREADY_EXISTING = -1;
 
 	protected Table table = null;
-
+	
+	private SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+	
 	private Logger logger = Logger.getLogger(IngestMapper.class);
 
 	// contentType
@@ -127,6 +129,11 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 		super.cleanup(context);
 	}
 
+	private String toSolrDateFormat(DateTime dateTime) {
+		Date date = dateTime.toDate();
+		return sdf.format(date);
+	}
+	
 	@Override
 	protected void map(Text key, Text value, Context context) throws IOException,
 			InterruptedException {
@@ -198,15 +205,13 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 						DateTime dateTime = ISODateTimeFormat
 								.localDateOptionalTimeParser()
 								.parseDateTime(dateString.substring(0, dateString.length() - 1));
-						Date date = dateTime.toDate();
-						SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-						logger.info("date: " + sdf.format(date));
+						logger.info("date: " + toSolrDateFormat(dateTime));
 
 						// TODO use a smarter serialization format like AVRO
 						// TODO use the Phoenix API
 						put.addColumn(Bytes.toBytes(CF_REPOSITORY),
 								Bytes.toBytes(rField.str_date.toString()),
-								Bytes.toBytes(sdf.format(date)));
+								Bytes.toBytes(toSolrDateFormat(dateTime)));
 
 						// Parsing Content-Type
 						String contentType = "null";
@@ -234,7 +239,8 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 
 						// Aim to have cells no larger than 10 MB, or 50 MB if you use mob
 						// about 2G
-						int sizeLimit = Integer.MAX_VALUE - 1024;
+						//int sizeLimit = Integer.MAX_VALUE - 1024;
+						int sizeLimit = 1000 * 1000;
 						byte[] body = readBytes(warc, length, sizeLimit);
 
 						logger.info("size of current warc record is: " + body.length);
@@ -256,7 +262,7 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 							logger.info("existing record crawled on date: " + existingDate);
 
 							// rawled at the same date
-							if (date.compareTo(existingDate) == 0) {
+							if (dateTime.toDate().compareTo(existingDate) == 0) {
 								logger
 										.info("existing record has been craweld on same day as the actual one");
 								// createNewVersion = false;
@@ -381,7 +387,10 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 						logger.warn("Unable to convert number of postings to int. Received value: "+fieldValue+" Setting value to -1");
 						fieldValue = "-1";
 					}
-				}				
+				} else if(fieldName.equals(cField.str_datePublished.toString())) {
+					fieldValue = toSolrDateFormat((DateTime)fieldValue);
+					logger.info("date published: " + fieldValue);
+				}
 				put.addColumn(Bytes.toBytes(CF_REPOSITORY),
 						Bytes.toBytes(cField.valueOf(fieldName).toString()),
 						Bytes.toBytes((String)fieldValue));
