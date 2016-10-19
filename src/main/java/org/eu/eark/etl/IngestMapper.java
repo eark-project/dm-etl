@@ -46,7 +46,7 @@ import java.util.List;
 public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 	// private LilyClient lilyClient;
 	// private LRepository repository;
-	public static final String REPOSITORY_TABLE_NAME = "document_repository";
+	public static final String REPOSITORY_TABLE_NAME = "news_archive";
 	public static final String CF_REPOSITORY = "doc_colf";
 	public static final String WEBSITE_TYPE = "website";
 
