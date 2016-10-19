@@ -350,7 +350,7 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 		List<String> fieldNames = webScraper.getFieldNames();
 
 		for (String fieldName : fieldNames) {
-			String fieldValue = webScraper.getValue(fieldName);
+			Object fieldValue = webScraper.getValue(fieldName);
 			if (fieldValue != null) {
 				logger.info("webScraper: " + fieldName + ": " + fieldValue);
 				// TODO is there a special treatment for updated number of postings required?
@@ -376,7 +376,7 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 				//typeCheck for number of Postings
 				} else if(fieldName.equals(cField.int_postings.toString())) {
 					try {
-						int nPostings = Integer.parseInt(fieldValue);
+						int nPostings = Integer.parseInt((String)fieldValue);
 					} catch (NumberFormatException e) {
 						logger.warn("Unable to convert number of postings to int. Received value: "+fieldValue+" Setting value to -1");
 						fieldValue = "-1";
@@ -384,7 +384,7 @@ public class IngestMapper extends Mapper<Text, Text, Text, Text> {
 				}				
 				put.addColumn(Bytes.toBytes(CF_REPOSITORY),
 						Bytes.toBytes(cField.valueOf(fieldName).toString()),
-						Bytes.toBytes(fieldValue));
+						Bytes.toBytes((String)fieldValue));
 			}
 		}
 		return status;
